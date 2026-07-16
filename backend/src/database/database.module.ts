@@ -1,13 +1,21 @@
 import { Module } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { UserEntity } from '../contexts/identity/user.entity';
 import { SecretsModule } from '../secrets/secrets.module';
 import {
   SECRETS_PROVIDER,
   SecretsProvider,
 } from '../secrets/secrets-provider.port';
 import { EnablePgcrypto1000000000000 } from './migrations/1000000000000-EnablePgcrypto';
+import { CreateUsers1000000000001 } from './migrations/1000000000001-CreateUsers';
 
 export const DATA_SOURCE = 'DATA_SOURCE';
+
+export const ALL_ENTITIES = [UserEntity];
+export const ALL_MIGRATIONS = [
+  EnablePgcrypto1000000000000,
+  CreateUsers1000000000001,
+];
 
 @Module({
   imports: [SecretsModule],
@@ -22,8 +30,9 @@ export const DATA_SOURCE = 'DATA_SOURCE';
           url,
           synchronize: false,
           poolSize: 10,
+          entities: ALL_ENTITIES,
           migrationsTableName: 'migrations',
-          migrations: [EnablePgcrypto1000000000000],
+          migrations: ALL_MIGRATIONS,
         });
         // Connection failures are surfaced via the health endpoint (db:'down'),
         // not by crashing the app at boot. Missing DATABASE_URL does fail fast (E-41).

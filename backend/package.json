@@ -20,7 +20,8 @@
     "test:e2e": "jest --selectProjects e2e",
     "test:cov": "jest --coverage",
     "test:ci": "jest --runInBand --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "seed": "ts-node -r tsconfig-paths/register src/contexts/identity/seed/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -28,6 +29,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.3",
+    "argon2": "^0.44.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "pg": "^8.22.0",
@@ -68,9 +70,18 @@
         "rootDir": "src",
         "testEnvironment": "node",
         "testRegex": ".*\\.spec\\.ts$",
-        "moduleFileExtensions": ["js", "json", "ts"],
+        "moduleFileExtensions": [
+          "js",
+          "json",
+          "ts"
+        ],
         "transform": {
-          "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "<rootDir>/../tsconfig.json" }]
+          "^.+\\.(t|j)s$": [
+            "ts-jest",
+            {
+              "tsconfig": "<rootDir>/../tsconfig.json"
+            }
+          ]
         }
       },
       {
@@ -80,19 +91,39 @@
           "<rootDir>/src/**/*.int-spec.ts",
           "<rootDir>/test/**/*.int-spec.ts"
         ],
-        "moduleFileExtensions": ["js", "json", "ts"],
+        "moduleFileExtensions": [
+          "js",
+          "json",
+          "ts"
+        ],
         "transform": {
-          "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "<rootDir>/tsconfig.json" }]
+          "^.+\\.(t|j)s$": [
+            "ts-jest",
+            {
+              "tsconfig": "<rootDir>/tsconfig.json"
+            }
+          ]
         },
         "testTimeout": 60000
       },
       {
         "displayName": "e2e",
         "testEnvironment": "node",
-        "testMatch": ["<rootDir>/test/**/*.e2e-spec.ts"],
-        "moduleFileExtensions": ["js", "json", "ts"],
+        "testMatch": [
+          "<rootDir>/test/**/*.e2e-spec.ts"
+        ],
+        "moduleFileExtensions": [
+          "js",
+          "json",
+          "ts"
+        ],
         "transform": {
-          "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "<rootDir>/tsconfig.json" }]
+          "^.+\\.(t|j)s$": [
+            "ts-jest",
+            {
+              "tsconfig": "<rootDir>/tsconfig.json"
+            }
+          ]
         },
         "testTimeout": 60000
       }
