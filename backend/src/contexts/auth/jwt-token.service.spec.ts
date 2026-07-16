@@ -12,14 +12,16 @@ describe('JwtTokenService', () => {
 
   let service: JwtTokenService;
   let signAsync: jest.Mock;
+  let verifyAsync: jest.Mock;
 
   beforeEach(async () => {
     signAsync = jest.fn().mockResolvedValue('signed.jwt.token');
+    verifyAsync = jest.fn();
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         JwtTokenService,
-        { provide: JwtService, useValue: { signAsync } },
+        { provide: JwtService, useValue: { signAsync, verifyAsync } },
         {
           provide: SECRETS_PROVIDER,
           useValue: { get: jest.fn().mockResolvedValue('test-secret') },
@@ -31,35 +33,66 @@ describe('JwtTokenService', () => {
     service = moduleRef.get(JwtTokenService);
   });
 
-  it('returns the signed token string', async () => {
-    const token = await service.sign({
-      sub: 'u1',
-      email: 'a@b.com',
-      role: 'provider',
+  describe('sign', () => {
+    it('returns the signed token string', async () => {
+      const token = await service.sign({
+        sub: 'u1',
+        email: 'a@b.com',
+        role: 'provider',
+      });
+      expect(token).toBe('signed.jwt.token');
     });
-    expect(token).toBe('signed.jwt.token');
+
+    it('calls signAsync with correct payload and secret', async () => {
+      await service.sign({ sub: 'u1', email: 'a@b.com', role: 'provider' });
+      expect(signAsync).toHaveBeenCalledWith(
+        {
+          sub: 'u1',
+          email: 'a@b.com',
+          role: 'provider',
+          iat: FIXED_IAT,
+          exp: FIXED_EXP,
+        },
+        { secret: 'test-secret' },
+      );
+    });
+
+    it('sets exp to 8 hours after iat', async () => {
+      await service.sign({ sub: 'u1', email: 'a@b.com', role: 'provider' });
+      const call = signAsync.mock.calls[0] as [
+        { iat: number; exp: number },
+        unknown,
+      ];
+      expect(call[0].exp - call[0].iat).toBe(8 * 60 * 60);
+    });
   });
 
-  it('calls signAsync with correct payload and secret', async () => {
-    await service.sign({ sub: 'u1', email: 'a@b.com', role: 'provider' });
-    expect(signAsync).toHaveBeenCalledWith(
-      {
+  describe('verify', () => {
+    it('returns ok with payload for a valid token', async () => {
+      const payload = {
         sub: 'u1',
         email: 'a@b.com',
         role: 'provider',
         iat: FIXED_IAT,
         exp: FIXED_EXP,
-      },
-      { secret: 'test-secret' },
-    );
-  });
+      };
+      verifyAsync.mockResolvedValue(payload);
+      const result = await service.verify('valid.jwt.token');
+      expect(result).toEqual({ status: 'ok', payload });
+    });
 
-  it('sets exp to 8 hours after iat', async () => {
-    await service.sign({ sub: 'u1', email: 'a@b.com', role: 'provider' });
-    const call = signAsync.mock.calls[0] as [
-      { iat: number; exp: number },
-      unknown,
-    ];
-    expect(call[0].exp - call[0].iat).toBe(8 * 60 * 60);
+    it('returns expired when TokenExpiredError is thrown', async () => {
+      const err = new Error('jwt expired');
+      err.name = 'TokenExpiredError';
+      verifyAsync.mockRejectedValue(err);
+      const result = await service.verify('expired.token');
+      expect(result).toEqual({ status: 'expired' });
+    });
+
+    it('returns invalid for malformed token', async () => {
+      verifyAsync.mockRejectedValue(new Error('invalid signature'));
+      const result = await service.verify('bad.token');
+      expect(result).toEqual({ status: 'invalid' });
+    });
   });
 });

@@ -8,6 +8,8 @@ import { JwtTokenService } from './jwt-token.service';
 import { TOKEN_SERVICE } from './token-service.port';
 import { LoginUseCase } from './login.use-case';
 import { AuthController } from './auth.controller';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [IdentityModule, SecretsModule, JwtModule.register({})],
@@ -15,7 +17,10 @@ import { AuthController } from './auth.controller';
     { provide: CLOCK, useClass: SystemClock },
     { provide: TOKEN_SERVICE, useClass: JwtTokenService },
     LoginUseCase,
+    JwtAuthGuard,
+    RolesGuard,
   ],
   controllers: [AuthController],
+  exports: [JwtAuthGuard, RolesGuard, TOKEN_SERVICE],
 })
 export class AuthModule {}
