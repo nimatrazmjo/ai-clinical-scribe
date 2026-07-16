@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm run build)",
+      "Bash(pnpm run lint)",
+      "Bash(pnpm run test:*)",
+      "Bash(pnpm run start:dev)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(npx typeorm migration:generate:*)",
+      "Bash(npx typeorm migration:run)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(psql:*)",
+      "Bash(aws secretsmanager delete-secret:*)",
+      "Read(./.env)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development"
+  }
+}

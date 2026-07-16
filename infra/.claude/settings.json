@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(terraform fmt:*)",
+      "Bash(terraform validate)",
+      "Bash(terraform plan:*)",
+      "Bash(aws sts get-caller-identity)",
+      "Bash(aws ec2 describe-*:*)",
+      "Bash(aws rds describe-*:*)",
+      "Bash(aws secretsmanager list-secrets)",
+      "Bash(aws secretsmanager describe-secret:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)"
+    ],
+    "ask": [
+      "Bash(terraform apply:*)",
+      "Bash(terraform destroy:*)",
+      "Bash(aws secretsmanager put-secret-value:*)",
+      "Bash(aws secretsmanager rotate-secret:*)"
+    ],
+    "deny": [
+      "Bash(aws iam create-user:*)",
+      "Bash(aws iam attach-user-policy:*)",
+      "Bash(aws ec2 terminate-instances:*)",
+      "Bash(aws rds delete-db-instance:*)",
+      "Bash(rm -rf:*)",
+      "Read(./**/*.tfstate)",
+      "Read(./**/*.pem)"
+    ]
+  }
+}
