@@ -38,6 +38,7 @@ export const ALL_MIGRATIONS = [
         // not by crashing the app at boot. Missing DATABASE_URL does fail fast (E-41).
         try {
           await ds.initialize();
+          await ds.runMigrations();
         } catch {
           // intentionally swallowed — health check will report db:'down'
         }

@@ -21,3 +21,4 @@ export { SystemClock } from './implementations/system-clock';
 export { UuidGenerator } from './implementations/uuid-generator';
 export { FixedClock } from './test-doubles/fixed-clock';
 export { SeqIdGenerator } from './test-doubles/seq-id-generator';
+export { CLOCK, ID_GENERATOR } from './tokens';
