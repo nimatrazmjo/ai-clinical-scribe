@@ -1,31 +1,54 @@
 {
   "permissions": {
     "allow": [
-      "Bash(terraform fmt:*)",
+      "Bash(terraform fmt *)",
       "Bash(terraform validate)",
-      "Bash(terraform plan:*)",
+      "Bash(terraform plan *)",
+      "Bash(terraform output *)",
+      "Bash(terraform state list)",
+      "Bash(terraform state show *)",
       "Bash(aws sts get-caller-identity)",
-      "Bash(aws ec2 describe-*:*)",
-      "Bash(aws rds describe-*:*)",
+      "Bash(aws ec2 describe-* *)",
+      "Bash(aws rds describe-* *)",
+      "Bash(aws elbv2 describe-* *)",
+      "Bash(aws acm describe-certificate *)",
+      "Bash(aws acm list-certificates)",
       "Bash(aws secretsmanager list-secrets)",
-      "Bash(aws secretsmanager describe-secret:*)",
+      "Bash(aws secretsmanager describe-secret *)",
+      "Bash(aws iam get-role *)",
+      "Bash(aws iam list-attached-role-policies *)",
+      "Bash(aws logs describe-log-groups *)",
+      "Bash(curl -sk https://* *)",
+      "Bash(openssl s_client *)",
+      "Bash(openssl x509 *)",
       "Bash(git status)",
-      "Bash(git diff:*)"
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(find . *)",
+      "Bash(grep -r *)"
     ],
     "ask": [
-      "Bash(terraform apply:*)",
-      "Bash(terraform destroy:*)",
-      "Bash(aws secretsmanager put-secret-value:*)",
-      "Bash(aws secretsmanager rotate-secret:*)"
+      "Bash(terraform apply *)",
+      "Bash(terraform destroy *)",
+      "Bash(aws secretsmanager put-secret-value *)",
+      "Bash(aws secretsmanager rotate-secret *)",
+      "Bash(bash infra/deploy/deploy.sh *)",
+      "Bash(ssh *)",
+      "Bash(scp *)"
     ],
     "deny": [
-      "Bash(aws iam create-user:*)",
-      "Bash(aws iam attach-user-policy:*)",
-      "Bash(aws ec2 terminate-instances:*)",
-      "Bash(aws rds delete-db-instance:*)",
-      "Bash(rm -rf:*)",
+      "Bash(aws iam create-user *)",
+      "Bash(aws iam attach-user-policy *)",
+      "Bash(aws iam create-access-key *)",
+      "Bash(aws ec2 terminate-instances *)",
+      "Bash(aws rds delete-db-instance *)",
+      "Bash(aws secretsmanager delete-secret *)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
       "Read(./**/*.tfstate)",
-      "Read(./**/*.pem)"
+      "Read(./**/*.tfstate.backup)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)"
     ]
   }
 }

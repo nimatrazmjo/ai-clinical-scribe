@@ -2,22 +2,40 @@
   "permissions": {
     "allow": [
       "Bash(pnpm install)",
+      "Bash(pnpm install *)",
       "Bash(pnpm run dev)",
       "Bash(pnpm run build)",
+      "Bash(pnpm run preview)",
       "Bash(pnpm run lint)",
-      "Bash(pnpm run test:*)",
+      "Bash(pnpm run typecheck)",
+      "Bash(tsc -b)",
+      "Bash(tsc --noEmit)",
       "Bash(git status)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)"
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(find src *)",
+      "Bash(grep -r *)",
+      "Bash(cat package.json)",
+      "Bash(cat vite.config.*)"
+    ],
+    "ask": [
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)"
     ],
     "deny": [
-      "Bash(rm -rf:*)",
-      "Bash(git push --force:*)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean -f *)",
       "Read(./.env)",
-      "Read(./**/*.pem)"
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)"
     ]
   },
   "env": {
-    "NODE_ENV": "development"
+    "NODE_ENV": "development",
+    "VITE_API_URL": "http://localhost:3000"
   }
 }
