@@ -43,7 +43,8 @@ describe('PatientIdentityService (integration)', () => {
   }, 30_000);
 
   beforeEach(async () => {
-    await ds.getRepository(PatientEntity).clear();
+    // encounters FK references patients — truncate dependents first
+    await ds.query('TRUNCATE TABLE encounters, patients RESTART IDENTITY CASCADE');
   });
 
   const dto = {

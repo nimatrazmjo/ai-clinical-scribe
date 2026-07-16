@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { UserEntity } from '../contexts/identity/user.entity';
 import { PatientEntity } from '../contexts/patient/patient.entity';
+import { EncounterOrmEntity } from '../contexts/encounter/infrastructure/encounter.orm-entity';
 import { SecretsModule } from '../secrets/secrets.module';
 import {
   SECRETS_PROVIDER,
@@ -10,14 +11,16 @@ import {
 import { EnablePgcrypto1000000000000 } from './migrations/1000000000000-EnablePgcrypto';
 import { CreateUsers1000000000001 } from './migrations/1000000000001-CreateUsers';
 import { CreatePatients1000000000002 } from './migrations/1000000000002-CreatePatients';
+import { CreateEncounters1000000000003 } from './migrations/1000000000003-CreateEncounters';
 
 export const DATA_SOURCE = 'DATA_SOURCE';
 
-export const ALL_ENTITIES = [UserEntity, PatientEntity];
+export const ALL_ENTITIES = [UserEntity, PatientEntity, EncounterOrmEntity];
 export const ALL_MIGRATIONS = [
   EnablePgcrypto1000000000000,
   CreateUsers1000000000001,
   CreatePatients1000000000002,
+  CreateEncounters1000000000003,
 ];
 
 @Module({
