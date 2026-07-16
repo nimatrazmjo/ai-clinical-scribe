@@ -2,11 +2,14 @@ import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from './support';
 
+// Boots with a non-existent DB; health returns db:'down' but the test only checks shapes.
+const FAKE_DB_URL = 'postgres://user:pass@127.0.0.1:1/nonexistent';
+
 describe('App (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    app = await createTestApp();
+    app = await createTestApp({ DATABASE_URL: FAKE_DB_URL });
   });
 
   afterAll(async () => {

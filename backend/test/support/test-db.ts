@@ -1,21 +1,23 @@
-// Testcontainers wrapper — wired in BE-03 when real DB connections are introduced.
-// Declared here so integration tests can import it without structural changes later.
-export class TestDb {
-  private _connectionUri = '';
+import {
+  PostgreSqlContainer,
+  StartedPostgreSqlContainer,
+} from '@testcontainers/postgresql';
 
-  static start(): Promise<TestDb> {
-    return Promise.reject(
-      new Error('TestDb.start() not yet implemented — wire in BE-03'),
-    );
+export class TestDb {
+  private constructor(private readonly container: StartedPostgreSqlContainer) {}
+
+  static async start(): Promise<TestDb> {
+    const container = await new PostgreSqlContainer(
+      'postgres:16-alpine',
+    ).start();
+    return new TestDb(container);
   }
 
-  stop(): Promise<void> {
-    return Promise.reject(
-      new Error('TestDb.stop() not yet implemented — wire in BE-03'),
-    );
+  async stop(): Promise<void> {
+    await this.container.stop();
   }
 
   get connectionUri(): string {
-    return this._connectionUri;
+    return this.container.getConnectionUri();
   }
 }
