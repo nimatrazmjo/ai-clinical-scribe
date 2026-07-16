@@ -101,6 +101,7 @@
       "src/**/*.(t|j)s",
       "!src/**/*.spec.ts",
       "!src/**/*.int-spec.ts",
+      "!src/**/index.ts",
       "!src/main.ts",
       "!src/app.controller.ts",
       "!src/app.service.ts"

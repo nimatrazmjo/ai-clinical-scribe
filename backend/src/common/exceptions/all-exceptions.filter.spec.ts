@@ -5,7 +5,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AllExceptionsFilter } from './all-exceptions.filter';
-import { DomainException } from './domain.exception';
+import { DomainException } from '../../shared-kernel/domain.exception';
 
 interface Envelope {
   statusCode: number;

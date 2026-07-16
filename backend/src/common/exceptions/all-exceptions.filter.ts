@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
-import { DomainException } from './domain.exception';
+import { DomainException } from '../../shared-kernel/domain.exception';
 
 interface ErrorEnvelope {
   statusCode: number;
