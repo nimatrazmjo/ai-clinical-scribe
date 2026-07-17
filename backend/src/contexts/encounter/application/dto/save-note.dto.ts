@@ -1,6 +1,7 @@
 import {
   ArrayMinSize,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
@@ -10,6 +11,7 @@ import { Type } from 'class-transformer';
 export class Icd10ItemDto {
   @IsString() @IsNotEmpty() code: string;
   @IsString() @IsNotEmpty() description: string;
+  @IsOptional() @IsNumber() score?: number;
 }
 
 export class AssessmentDto {
