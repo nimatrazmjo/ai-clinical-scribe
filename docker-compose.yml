@@ -3,7 +3,7 @@
 # Prerequisites: Docker Desktop (or Engine + Compose v2), .env file at project root
 #
 # Quick start:
-#   cp backend/.env.example .env   # then fill in POSTGRES_PASSWORD and JWT_SECRET
+#   cp backend/.env.example .env   # fill in POSTGRES_PASSWORD and JWT_SECRET
 #   docker compose up --build
 #
 # Run unit tests (no containers required):
@@ -13,9 +13,9 @@
 #   docker compose run --rm api npm run test:int
 #   docker compose run --rm api npm run test:e2e
 #
-# Note: tests use Testcontainers (pgvector/pgvector:pg16) and require the Docker
-# socket to be accessible from inside the container. Mount it via the 'test' profile
-# or run tests directly on the host: cd backend && npm run test:ci
+# Note: integration/e2e tests use Testcontainers (pgvector/pgvector:pg16) and
+# require the Docker socket. Use the 'test' profile or run on the host:
+#   cd backend && npm run test:ci
 
 services:
 
@@ -26,7 +26,7 @@ services:
     environment:
       POSTGRES_DB: clinical_scribe
       POSTGRES_USER: scribe
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}"
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -50,17 +50,17 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://scribe:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/clinical_scribe
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env — use: openssl rand -hex 32}
+      DATABASE_URL: "postgres://scribe:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/clinical_scribe"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env (generate with: openssl rand -hex 32)}"
       PORT: "3000"
       NODE_ENV: production
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://localhost:3001}
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:5173,http://localhost:3001}"
     ports:
       - "${API_PORT:-3000}:3000"
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health | grep -q '\"status\"' || exit 1"]
+      test: ["CMD-SHELL", "wget -qO /dev/null http://localhost:3000/health || exit 1"]
       interval: 15s
       timeout: 5s
       start_period: 20s
@@ -78,38 +78,35 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://scribe:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/clinical_scribe
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      DATABASE_URL: "postgres://scribe:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/clinical_scribe"
+      JWT_SECRET: "${JWT_SECRET:?Set JWT_SECRET in .env}"
       PORT: "3000"
       NODE_ENV: development
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://localhost:3001}
+      CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:5173,http://localhost:3001}"
     ports:
       - "${API_PORT:-3000}:3000"
     volumes:
-      # Mount source so ts-node-dev picks up edits without rebuild
+      # Mount source so nest start --watch picks up edits without rebuild
       - ./backend/src:/app/src:ro
       - ./backend/test:/app/test:ro
     networks:
       - internal
 
-  # ── Test runner (Testcontainers — needs Docker socket) ───────────────────
+  # ── Test runner (Testcontainers needs Docker socket) ─────────────────────
   # Usage: docker compose --profile test run --rm test npm run test:ci
   test:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: deps          # deps stage has devDependencies installed
+      target: deps
     profiles: [test]
     working_dir: /app
     environment:
       NODE_ENV: test
-      # Testcontainers spins its own Postgres — no DATABASE_URL needed
-      # JWT_SECRET must be set so the app compiles properly in tests
       JWT_SECRET: test-jwt-secret-for-ci-only
     volumes:
       - ./backend/src:/app/src:ro
       - ./backend/test:/app/test:ro
-      # Testcontainers needs the Docker socket to launch containers
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - internal
