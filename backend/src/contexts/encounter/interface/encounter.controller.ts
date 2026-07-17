@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -21,6 +22,7 @@ import { SaveNoteVersionUseCase } from '../application/save-note-version.use-cas
 import { EncounterRepository } from '../infrastructure/encounter.repository';
 import { NoteVersionRepository } from '../infrastructure/note-version.repository';
 import { EncounterId } from '../../../shared-kernel';
+import { diffSoapNotes, SoapNoteSnapshot } from '../domain/diff-soap-notes';
 
 function versionToResponse(v: {
   id: { value: string };
@@ -143,6 +145,59 @@ export class EncounterController {
     if (!encounter) throw new NotFoundException('Encounter not found');
     const versions = await this.noteVersionRepo.listByEncounter(id);
     return versions.map(versionToResponse);
+  }
+
+  @Get(':id/versions/diff')
+  @Auth(UserRole.PROVIDER)
+  async diffVersions(
+    @Param('id') id: string,
+    @Query('from', ParseIntPipe) fromNo: number,
+    @Query('to', ParseIntPipe) toNo: number,
+    @CurrentUser() user: UserEntity,
+  ) {
+    const encounter = await this.repo.findByProviderAndId(user.id, new EncounterId(id));
+    if (!encounter) throw new NotFoundException('Encounter not found');
+
+    const [fromVersion, toVersion] = await Promise.all([
+      this.noteVersionRepo.findByEncounterAndVersion(id, fromNo),
+      this.noteVersionRepo.findByEncounterAndVersion(id, toNo),
+    ]);
+
+    if (!fromVersion) throw new NotFoundException(`Version ${fromNo} not found`);
+    if (!toVersion) throw new NotFoundException(`Version ${toNo} not found`);
+
+    const fromSnap: SoapNoteSnapshot = {
+      subjective: fromVersion.content.subjective,
+      objective: fromVersion.content.objective,
+      assessment: {
+        text: fromVersion.content.assessment.text,
+        icd10: fromVersion.content.assessment.icd10.map((c) => ({
+          code: c.code,
+          description: c.description,
+        })),
+      },
+      plan: fromVersion.content.plan,
+    };
+
+    const toSnap: SoapNoteSnapshot = {
+      subjective: toVersion.content.subjective,
+      objective: toVersion.content.objective,
+      assessment: {
+        text: toVersion.content.assessment.text,
+        icd10: toVersion.content.assessment.icd10.map((c) => ({
+          code: c.code,
+          description: c.description,
+        })),
+      },
+      plan: toVersion.content.plan,
+    };
+
+    return {
+      encounterId: id,
+      from: fromNo,
+      to: toNo,
+      diff: diffSoapNotes(fromSnap, toSnap),
+    };
   }
 
   @Get(':id/versions/:n')
