@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import type { UserRole } from '@contracts';
+import { UserRole } from '@contracts';
 import { useAuth } from './AuthContext';
 
 interface Props {
@@ -25,7 +25,8 @@ export function ProtectedRoute({ children, allowedRoles }: Props) {
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/encounters" replace />;
+    const home = user.role === UserRole.Admin ? '/admin' : '/encounters';
+    return <Navigate to={home} replace />;
   }
 
   return <>{children}</>;

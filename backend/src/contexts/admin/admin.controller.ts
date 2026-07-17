@@ -38,13 +38,26 @@ export class AdminController {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
     });
-    return encounters.map((e) => ({
-      id: e.id.value,
-      patientId: e.patientRef.value,
-      providerId: e.providerRef.value,
-      status: e.status,
-      createdAt: e.createdAt,
-    }));
+    const patientIds = [...new Set(encounters.map((e) => e.patientRef.value))];
+    const patientMap = await this.encounterRepo.findPatientsByIds(patientIds);
+
+    return encounters.map((e) => {
+      const p = patientMap.get(e.patientRef.value);
+      return {
+        id: e.id.value,
+        status: e.status,
+        patientFirstName: p?.firstName ?? '',
+        patientLastName: p?.lastName ?? '',
+        patientDateOfBirth: p?.dateOfBirth ?? '',
+        transcript: e.transcript?.text ?? null,
+        draft: null,
+        draftRevision: 0,
+        templateId: e.selectedTemplateRef?.value ?? null,
+        providerId: e.providerRef.value,
+        createdAt: e.createdAt,
+        updatedAt: e.createdAt,
+      };
+    });
   }
 
   @Post('providers')

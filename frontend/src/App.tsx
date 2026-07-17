@@ -34,6 +34,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function RoleBasedHome() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  return <Navigate to={user?.role === UserRole.Admin ? '/admin' : '/encounters'} replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -42,7 +48,7 @@ function AppRoutes() {
       <Route
         path="/encounters"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={[UserRole.Provider]}>
             <AppShell><EncounterListPage /></AppShell>
           </ProtectedRoute>
         }
@@ -78,8 +84,8 @@ function AppRoutes() {
         <Route path="providers" element={<AdminProvidersPage />} />
       </Route>
 
-      <Route path="/" element={<Navigate to="/encounters" replace />} />
-      <Route path="*" element={<Navigate to="/encounters" replace />} />
+      <Route path="/" element={<RoleBasedHome />} />
+      <Route path="*" element={<RoleBasedHome />} />
     </Routes>
   );
 }
