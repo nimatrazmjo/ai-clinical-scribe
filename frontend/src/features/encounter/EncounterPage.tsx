@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { AlertCircle, ChevronLeft, Save } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, ChevronLeft, Loader2, Square, Wand2, Save } from 'lucide-react';
+import type { EncounterDto, TemplateDto, NoteVersionDto } from '@contracts';
 import { useEncounterQuery } from './useEncounterQuery';
 import { useDraftAutosave } from './useDraftAutosave';
+import { useNoteVersionsQuery } from './useNoteVersionsQuery';
+import { useTemplatesQuery } from '@/features/template/useTemplatesQuery';
+import { useSoapStream } from '@/features/generation/useSoapStream';
+import { SoapNoteView } from '@/features/generation/SoapNoteView';
+import { TemplateSelector } from '@/features/template/TemplateSelector';
+import { VersionHistoryPanel } from './VersionHistoryPanel';
+import { saveNote } from '@/api/notes';
 import { formatPatientName, formatDate } from '@/lib/formatters';
 import { EncounterStatus } from '@contracts';
 import { cn } from '@/lib/cn';
 
-const saveStatusLabel: Record<string, string> = {
+const draftStatusLabel: Record<string, string> = {
   idle: '',
   unsaved: 'Unsaved changes',
   saving: 'Saving…',
@@ -15,7 +24,7 @@ const saveStatusLabel: Record<string, string> = {
   error: 'Save failed',
 };
 
-const saveStatusColor: Record<string, string> = {
+const draftStatusColor: Record<string, string> = {
   idle: 'text-muted-foreground',
   unsaved: 'text-yellow-600 dark:text-yellow-400',
   saving: 'text-muted-foreground',
@@ -25,18 +34,9 @@ const saveStatusColor: Record<string, string> = {
 
 export function EncounterPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { data: encounter, isLoading, isError, error } = useEncounterQuery(id ?? '');
-  const { status, scheduleAutosave, initSavedText } = useDraftAutosave(id ?? '');
-  // null = user hasn't typed yet; derive display value from server until they do
-  const [localEdit, setLocalEdit] = useState<string | null>(null);
-  const transcript = localEdit ?? encounter?.transcript ?? '';
-
-  useEffect(() => {
-    if (encounter?.transcript != null) {
-      initSavedText(encounter.transcript);
-    }
-  }, [encounter?.transcript, initSavedText]);
+  const { data: versions = [] } = useNoteVersionsQuery(id ?? '');
+  const { data: templates = [] } = useTemplatesQuery();
 
   if (isLoading) {
     return (
@@ -56,11 +56,74 @@ export function EncounterPage() {
     );
   }
 
+  return (
+    <EncounterPageContent
+      encounterId={id!}
+      encounter={encounter}
+      versions={versions}
+      templates={templates.filter(t => t.isActive)}
+    />
+  );
+}
+
+interface ContentProps {
+  encounterId: string;
+  encounter: EncounterDto;
+  versions: NoteVersionDto[];
+  templates: TemplateDto[];
+}
+
+function EncounterPageContent({ encounterId, encounter, versions, templates }: ContentProps) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // Initialize hooks from server data — no post-mount effects needed
+  const { status: draftStatus, scheduleAutosave, initSavedText } = useDraftAutosave(encounterId);
+  const { status, note, refusalReason, errorMessage, start, cancel, updateNote } = useSoapStream(encounter.draft);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    encounter.templateId ?? null,
+  );
+
+  const [localEdit, setLocalEdit] = useState<string | null>(null);
+  const transcript = localEdit ?? encounter.transcript ?? '';
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (encounter.transcript != null) {
+      initSavedText(encounter.transcript);
+    }
+  }, [encounter.transcript, initSavedText]);
+
   const isFinalized = encounter.status === EncounterStatus.Finalized;
+  const isStreaming = status === 'streaming';
+  const hasNote = status !== 'idle';
+  const canGenerate = !isFinalized && !isStreaming && transcript.trim().length > 0;
+  const canSave = !isFinalized && status === 'done';
+
+  async function handleGenerate() {
+    await start(encounterId, selectedTemplateId ?? undefined);
+  }
+
+  async function handleSave() {
+    if (!canSave) return;
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await saveNote(encounterId, { soapNote: note, draftRevision: encounter.draftRevision });
+      await queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'notes'] });
+      await queryClient.invalidateQueries({ queryKey: ['encounters', encounterId] });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   const patientName = formatPatientName(encounter.patientFirstName, encounter.patientLastName);
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col gap-4">
+    <div className="max-w-3xl mx-auto flex flex-col gap-6 pb-8">
       {/* Header */}
       <div className="flex items-center gap-2">
         <button
@@ -90,9 +153,9 @@ export function EncounterPage() {
           <h2 id="transcript-heading" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Transcript
           </h2>
-          {status !== 'idle' && (
-            <span className={cn('text-xs', saveStatusColor[status])} aria-live="polite">
-              {saveStatusLabel[status]}
+          {draftStatus !== 'idle' && (
+            <span className={cn('text-xs', draftStatusColor[draftStatus])} aria-live="polite">
+              {draftStatusLabel[draftStatus]}
             </span>
           )}
         </div>
@@ -100,8 +163,8 @@ export function EncounterPage() {
           id="transcript"
           aria-label="Encounter transcript"
           value={transcript}
-          readOnly={isFinalized}
-          onChange={(e) => {
+          readOnly={isFinalized || isStreaming}
+          onChange={e => {
             setLocalEdit(e.target.value);
             scheduleAutosave(e.target.value);
           }}
@@ -109,28 +172,111 @@ export function EncounterPage() {
           placeholder={isFinalized ? '' : 'Paste or type the encounter transcript here…'}
           className={cn(
             'w-full rounded border bg-background px-3 py-2 text-sm font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-ring',
-            isFinalized ? 'border-transparent bg-muted/30 cursor-default' : 'border-input',
+            isFinalized || isStreaming
+              ? 'border-transparent bg-muted/30 cursor-default'
+              : 'border-input',
           )}
         />
       </section>
 
-      {/* Action area — placeholder for FE-08/09 */}
+      {/* Generate controls */}
       {!isFinalized && (
-        <div className="flex items-center gap-2 pt-2 border-t border-border">
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded bg-primary text-primary-foreground text-sm font-medium opacity-40 cursor-not-allowed"
-            title="Generation coming in FE-09"
-          >
-            <Save size={14} aria-hidden="true" />
-            Generate note
-          </button>
-          <span className="text-xs text-muted-foreground">
-            Template selection and generation available after FE-08.
-          </span>
+        <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-border">
+          <TemplateSelector
+            templates={templates}
+            selectedId={selectedTemplateId}
+            onChange={setSelectedTemplateId}
+          />
+
+          <div className="flex items-center gap-2 ml-auto">
+            {isStreaming ? (
+              <button
+                type="button"
+                onClick={cancel}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded border border-destructive text-destructive text-sm font-medium hover:bg-destructive/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Square size={12} aria-hidden="true" />
+                Cancel
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleGenerate()}
+                disabled={!canGenerate}
+                title={transcript.trim().length === 0 ? 'Add a transcript first' : undefined}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Wand2 size={14} aria-hidden="true" />
+                Generate note
+              </button>
+            )}
+
+            {canSave && (
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={isSaving}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded border border-input bg-background text-sm font-medium hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
+              >
+                {isSaving
+                  ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                  : <Save size={14} aria-hidden="true" />}
+                {isSaving ? 'Saving…' : 'Save note'}
+              </button>
+            )}
+          </div>
         </div>
       )}
+
+      {/* Save error */}
+      {saveError && (
+        <div role="alert" className="flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle size={14} aria-hidden="true" />
+          <span>{saveError}</span>
+        </div>
+      )}
+
+      {/* Refusal message */}
+      {status === 'refused' && refusalReason && (
+        <div role="alert" className="rounded border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800 dark:border-yellow-700/50 dark:bg-yellow-900/20 dark:text-yellow-300">
+          <p className="font-medium mb-1">Note generation declined</p>
+          <p>{refusalReason}</p>
+        </div>
+      )}
+
+      {/* Stream error */}
+      {status === 'error' && errorMessage && (
+        <div role="alert" className="flex items-center gap-2 text-sm text-destructive">
+          <AlertCircle size={14} aria-hidden="true" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {/* SOAP note */}
+      {hasNote && status !== 'refused' && (
+        <section aria-labelledby="soap-note-heading">
+          <div className="flex items-baseline justify-between mb-3">
+            <h2 id="soap-note-heading" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              SOAP Note
+            </h2>
+            {isStreaming && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground" aria-live="polite">
+                <Loader2 size={10} className="animate-spin" aria-hidden="true" />
+                Generating…
+              </span>
+            )}
+          </div>
+          <SoapNoteView
+            note={note}
+            status={status}
+            onChange={updateNote}
+            readOnly={isFinalized}
+          />
+        </section>
+      )}
+
+      {/* Version history */}
+      {versions.length > 0 && <VersionHistoryPanel versions={versions} />}
     </div>
   );
 }
