@@ -100,7 +100,7 @@ function TextFieldDiff({ label, diff }: { label: string; diff: FieldDiff }) {
       <div className="grid grid-cols-2 gap-2">
         <div
           className={cn(
-            'whitespace-pre-wrap rounded border border-red-200 bg-red-50 p-2 text-xs text-red-900',
+            'max-h-48 overflow-y-auto whitespace-pre-wrap rounded border border-red-200 bg-red-50 p-2 text-xs text-red-900',
             'dark:border-red-800 dark:bg-red-900/20 dark:text-red-200',
             !diff.before && 'italic opacity-50',
           )}
@@ -109,7 +109,7 @@ function TextFieldDiff({ label, diff }: { label: string; diff: FieldDiff }) {
         </div>
         <div
           className={cn(
-            'whitespace-pre-wrap rounded border border-green-200 bg-green-50 p-2 text-xs text-green-900',
+            'max-h-48 overflow-y-auto whitespace-pre-wrap rounded border border-green-200 bg-green-50 p-2 text-xs text-green-900',
             'dark:border-green-800 dark:bg-green-900/20 dark:text-green-200',
             !diff.after && 'italic opacity-50',
           )}

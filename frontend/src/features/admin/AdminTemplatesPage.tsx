@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Edit2, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { getAllTemplates, createTemplate, updateTemplate, deleteTemplate } from '@/api/adminTemplates';
 import type { TemplateDto } from '@contracts';
 import { formatDateTime } from '@/lib/formatters';
@@ -70,14 +71,14 @@ export function AdminTemplatesPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Templates</h2>
         {!showForm && (
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={() => { setCreating(true); setEditing(null); }}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Plus size={12} aria-hidden="true" />
             New template
-          </button>
+          </Button>
         )}
       </div>
 
@@ -237,21 +238,13 @@ function TemplateForm({ initial, isBusy, error, onSave, onCancel }: FormProps) {
       )}
 
       <div className="flex items-center gap-2">
-        <button
-          type="submit"
-          disabled={isBusy}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
-        >
+        <Button type="submit" disabled={isBusy}>
           {isBusy && <Loader2 size={12} className="animate-spin" aria-hidden="true" />}
           {initial ? 'Save changes' : 'Create template'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="h-8 px-3 rounded border border-input text-sm hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

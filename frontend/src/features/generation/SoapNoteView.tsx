@@ -20,6 +20,13 @@ const SECTION_LABEL: Record<string, string> = {
   plan: 'Plan',
 };
 
+const SECTION_ACCENT: Record<string, string> = {
+  subjective: 'border-l-2 border-l-blue-400 pl-3',
+  objective:  'border-l-2 border-l-teal-400 pl-3',
+  plan:       'border-l-2 border-l-violet-400 pl-3',
+  assessment: 'border-l-2 border-l-amber-400 pl-3',
+};
+
 export function SoapNoteView({ note, status, onChange, readOnly = false }: Props) {
   const editable = status === 'done' && !readOnly;
   const streaming = status === 'streaming';
@@ -27,7 +34,7 @@ export function SoapNoteView({ note, status, onChange, readOnly = false }: Props
   return (
     <div className="flex flex-col gap-4">
       {TEXT_SECTIONS.map(section => (
-        <div key={section}>
+        <div key={section} className={SECTION_ACCENT[section]}>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
             {SECTION_LABEL[section]}
           </h3>
@@ -49,7 +56,7 @@ export function SoapNoteView({ note, status, onChange, readOnly = false }: Props
         </div>
       ))}
 
-      <div>
+      <div className={SECTION_ACCENT['assessment']}>
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
           Assessment
         </h3>

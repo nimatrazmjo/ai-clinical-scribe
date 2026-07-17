@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Stethoscope } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { useAuthApi } from './useAuthApi';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 
 function isValidEmail(value: string): boolean {
@@ -111,13 +112,9 @@ export function LoginPage() {
             )}
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="mt-2 h-8 rounded bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 transition-colors"
-          >
+          <Button type="submit" disabled={isLoading} className="mt-2 w-full">
             {isLoading ? 'Signing in…' : 'Sign in'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

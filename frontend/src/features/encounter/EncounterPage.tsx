@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, ChevronLeft, Loader2, Square, Wand2, Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { EncounterDto, SoapNote, TemplateDto, NoteVersionDto } from '@contracts';
 import { ApiError } from '@/api/apiClient';
 import { useEncounterQuery } from './useEncounterQuery';
@@ -150,14 +151,15 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
     <div className="max-w-3xl mx-auto flex flex-col gap-6 pb-8">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={() => navigate('/encounters')}
-          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Back to encounters"
         >
           <ChevronLeft size={16} />
-        </button>
+        </Button>
         <div>
           <h1 className="text-base font-semibold">{patientName}</h1>
           <p className="text-xs text-muted-foreground">
@@ -214,39 +216,40 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
 
           <div className="flex items-center gap-2 ml-auto">
             {isStreaming ? (
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={cancel}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded border border-destructive text-destructive text-sm font-medium hover:bg-destructive/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 <Square size={12} aria-hidden="true" />
                 Cancel
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
                 onClick={() => void handleGenerate()}
                 disabled={!canGenerate}
                 title={transcript.trim().length === 0 ? 'Add a transcript first' : undefined}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed"
+                className="h-9 shadow-sm"
               >
                 <Wand2 size={14} aria-hidden="true" />
                 Generate note
-              </button>
+              </Button>
             )}
 
             {canSave && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => void handleSave()}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1.5 h-8 px-3 rounded border border-input bg-background text-sm font-medium hover:bg-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40"
               >
                 {isSaving
                   ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                   : <Save size={14} aria-hidden="true" />}
                 {isSaving ? 'Saving…' : 'Save note'}
-              </button>
+              </Button>
             )}
           </div>
         </div>

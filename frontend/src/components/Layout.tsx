@@ -24,7 +24,7 @@ export function Layout({ children, userName, onLogout }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <header className="border-b border-border bg-card px-4 h-12 flex items-center justify-between shrink-0">
+      <header className="border-b border-border bg-card px-4 h-12 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           <Stethoscope size={18} className="text-primary" aria-hidden="true" />
           <span className="font-semibold text-sm tracking-tight">Kyron Scribe</span>

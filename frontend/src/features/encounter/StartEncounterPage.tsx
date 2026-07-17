@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createEncounter } from '@/api/encounters';
 import { useToast } from '@/hooks/useToast';
 import { ApiError } from '@/api/apiClient';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
 
 interface FormValues {
@@ -162,20 +163,16 @@ export function StartEncounterPage() {
         </Field>
 
         <div className="flex gap-2 mt-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => navigate('/encounters')}
-            className="h-8 px-3 rounded border border-input bg-background text-sm hover:bg-muted transition-colors"
           >
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="h-8 px-3 rounded bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
+          </Button>
+          <Button type="submit" disabled={isLoading}>
             {isLoading ? 'Starting…' : 'Start encounter'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

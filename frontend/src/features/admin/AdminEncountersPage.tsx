@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getAdminEncounters, type AdminEncounterDto } from '@/api/admin';
+import { Button } from '@/components/ui/button';
 import { formatDateTime, formatPatientName } from '@/lib/formatters';
 import { EncounterStatus } from '@contracts';
 import { cn } from '@/lib/cn';
@@ -56,13 +57,14 @@ export function AdminEncountersPage() {
           />
         </div>
         {(providerFilter || fromDate || toDate) && (
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => { setProviderFilter(''); setFromDate(''); setToDate(''); }}
-            className="h-7 px-2 rounded border border-input text-xs hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Clear
-          </button>
+          </Button>
         )}
       </div>
 
