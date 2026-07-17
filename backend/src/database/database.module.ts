@@ -17,6 +17,7 @@ import { CreateEncounters1000000000003 } from './migrations/1000000000003-Create
 import { CreateNoteVersions1000000000004 } from './migrations/1000000000004-CreateNoteVersions';
 import { AddDraftRevision1000000000005 } from './migrations/1000000000005-AddDraftRevision';
 import { CreateAuditLog1000000000006 } from './migrations/1000000000006-CreateAuditLog';
+import { CreateIcd10Codes1000000000007 } from './migrations/1000000000007-CreateIcd10Codes';
 
 export const DATA_SOURCE = 'DATA_SOURCE';
 
@@ -29,6 +30,7 @@ export const ALL_MIGRATIONS = [
   CreateNoteVersions1000000000004,
   AddDraftRevision1000000000005,
   CreateAuditLog1000000000006,
+  CreateIcd10Codes1000000000007,
 ];
 
 @Module({

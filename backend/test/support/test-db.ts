@@ -8,7 +8,7 @@ export class TestDb {
 
   static async start(): Promise<TestDb> {
     const container = await new PostgreSqlContainer(
-      'postgres:16-alpine',
+      'pgvector/pgvector:pg16',
     ).start();
     return new TestDb(container);
   }
