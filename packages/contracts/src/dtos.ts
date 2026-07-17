@@ -41,6 +41,7 @@ export interface UpdateTemplateDto {
 
 export interface CreateProviderDto {
   email: string;
+  firstName: string;
+  lastName: string;
   password: string;
-  role?: 'provider' | 'admin';
 }

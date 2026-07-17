@@ -4,7 +4,8 @@ import { apiClient } from './apiClient';
 export interface ProviderDto {
   id: string;
   email: string;
-  role: string;
+  firstName: string;
+  lastName: string;
   isActive: boolean;
   createdAt: string;
 }
