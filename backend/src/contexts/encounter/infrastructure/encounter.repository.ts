@@ -50,6 +50,13 @@ export class EncounterRepository implements EncounterRepositoryPort {
     );
   }
 
+  async saveTranscript(encounterId: string, text: string): Promise<void> {
+    await this.ds.getRepository(EncounterOrmEntity).update(
+      { id: encounterId },
+      { currentTranscript: text },
+    );
+  }
+
   async findByFilter(filter: {
     providerId?: string;
     from?: Date;

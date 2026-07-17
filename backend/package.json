@@ -23,8 +23,13 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "seed": "ts-node -r tsconfig-paths/register src/contexts/identity/seed/seed.ts"
   },
+  "packageManager": "pnpm@11.13.1",
+  "pnpm": {
+    "onlyBuiltDependencies": ["argon2", "cpu-features", "protobufjs", "ssh2", "unrs-resolver"]
+  },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
+    "dotenv": "^16.5.0",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",

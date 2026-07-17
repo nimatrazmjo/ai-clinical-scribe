@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PatientIdentityService } from '../../patient/patient-identity.service';
 import { ENCOUNTER_REPOSITORY } from '../domain/ports/encounter.repository.port';
 import type { EncounterRepositoryPort } from '../domain/ports/encounter.repository.port';
+import { EncounterRepository } from '../infrastructure/encounter.repository';
 import { Encounter } from '../domain/encounter.aggregate';
 import { EncounterId, TemplateId, UserId, ID_GENERATOR, CLOCK } from '../../../shared-kernel';
 import type { IdGenerator } from '../../../shared-kernel';
@@ -14,6 +15,7 @@ export class StartEncounterUseCase {
   constructor(
     private readonly patientIdentityService: PatientIdentityService,
     @Inject(ENCOUNTER_REPOSITORY) private readonly repo: EncounterRepositoryPort,
+    private readonly encounterRepo: EncounterRepository,
     @Inject(ID_GENERATOR) private readonly idGen: IdGenerator,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
@@ -40,6 +42,10 @@ export class StartEncounterUseCase {
     encounter.pullEvents();
 
     const saved = await this.repo.save(encounter);
+
+    if (dto.transcript && dto.transcript.trim().length > 0) {
+      await this.encounterRepo.saveTranscript(saved.id.value, dto.transcript);
+    }
 
     return {
       id: saved.id.value,

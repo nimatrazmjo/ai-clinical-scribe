@@ -14,7 +14,8 @@ import { Auth } from '../auth/decorators/auth.decorator';
 import { UserEntity, UserRole } from '../identity/user.entity';
 import { UserRepository } from '../identity/user.repository';
 import { EncounterRepository } from '../encounter/infrastructure/encounter.repository';
-import { PASSWORD_HASHER, PasswordHasher } from '../identity/password-hasher.port';
+import { PASSWORD_HASHER } from '../identity/password-hasher.port';
+import type { PasswordHasher } from '../identity/password-hasher.port';
 import { CreateProviderDto } from './dto/create-provider.dto';
 
 @Controller('admin')

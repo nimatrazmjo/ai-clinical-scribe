@@ -15,6 +15,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { UserEntity, UserRole } from '../../identity/user.entity';
 import { StartEncounterDto } from '../application/dto/start-encounter.dto';
 import { UpdateDraftDto } from '../application/dto/update-draft.dto';
+import { SetTranscriptDto } from '../application/dto/set-transcript.dto';
 import { SaveNoteDto } from '../application/dto/save-note.dto';
 import { StartEncounterUseCase } from '../application/start-encounter.use-case';
 import { UpdateDraftUseCase } from '../application/update-draft.use-case';
@@ -110,6 +111,20 @@ export class EncounterController {
       workingDraft: encounter.workingDraft ?? null,
       createdAt: encounter.createdAt,
     };
+  }
+
+  @Patch(':id/transcript')
+  @HttpCode(200)
+  @Auth(UserRole.PROVIDER)
+  async setTranscript(
+    @Param('id') id: string,
+    @Body() dto: SetTranscriptDto,
+    @CurrentUser() user: UserEntity,
+  ) {
+    const encounter = await this.repo.findByProviderAndId(user.id, new EncounterId(id));
+    if (!encounter) throw new NotFoundException('Encounter not found');
+    await this.repo.saveTranscript(id, dto.text);
+    return { ok: true };
   }
 
   @Patch(':id/draft')

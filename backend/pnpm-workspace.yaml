@@ -1,6 +1,6 @@
 allowBuilds:
-  argon2: set this to true or false
-  cpu-features: false
-  protobufjs: false
-  ssh2: false
-  unrs-resolver: false
+  argon2: true
+  cpu-features: true
+  ssh2: true
+  protobufjs: true
+  unrs-resolver: true

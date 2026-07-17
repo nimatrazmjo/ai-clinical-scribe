@@ -11,6 +11,7 @@ import {
 import { Assessment } from '../domain/value-objects/assessment';
 import { Icd10Suggestion } from '../domain/value-objects/icd10-suggestion';
 import { SoapNote } from '../domain/value-objects/soap-note';
+import { EncounterStatus } from '../domain/value-objects/encounter-status';
 import { NoteVersion } from '../domain/note-version.aggregate';
 import type { NoteVersionRepositoryPort } from '../domain/ports/note-version.repository.port';
 import { NOTE_VERSION_REPOSITORY } from '../domain/ports/note-version.repository.port';
@@ -99,8 +100,10 @@ export class SaveNoteVersionUseCase {
 
     const saved = await this.noteVersionRepo.append(version);
 
-    encounter.finalize();
-    await this.encounterRepo.save(encounter);
+    if (encounter.status === EncounterStatus.DRAFT) {
+      encounter.finalize();
+      await this.encounterRepo.save(encounter);
+    }
 
     // Audit — no PHI, only IDs and version number
     await this.audit.record({

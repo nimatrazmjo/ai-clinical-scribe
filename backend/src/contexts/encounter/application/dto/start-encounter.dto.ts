@@ -13,6 +13,10 @@ export class StartEncounterDto {
   dateOfBirth: string;
 
   @IsOptional()
+  @IsString()
+  transcript?: string;
+
+  @IsOptional()
   @IsUUID()
   templateId?: string;
 }

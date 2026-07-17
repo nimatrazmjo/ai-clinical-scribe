@@ -1,11 +1,14 @@
 # ---- deps: install all dependencies (including devDeps for TypeScript build) ----
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 
-# Enable pnpm via corepack (ships with Node 20)
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Native build tools (needed by argon2)
+RUN apk add --no-cache python3 make g++
 
-COPY package.json pnpm-lock.yaml ./
+# Pin exact pnpm version matching the lockfile / packageManager field
+RUN corepack enable && corepack prepare pnpm@11.13.1 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # ---- builder: compile TypeScript → dist/ ----
@@ -20,21 +23,22 @@ ENV NODE_ENV=development
 EXPOSE 3000
 CMD ["pnpm", "run", "start:dev"]
 
-# ---- production: minimal runtime image ----
-FROM node:20-alpine AS production
+# ---- production: copy prebuilt artifacts, no re-download ----
+FROM node:22-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# argon2 native addon needs libstdc++ at runtime
+RUN apk add --no-cache libstdc++
 
 # Health-check via wget (busybox, already in alpine)
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO /dev/null http://localhost:3000/health || exit 1
 
 COPY --from=builder /app/dist ./dist
-COPY package.json pnpm-lock.yaml ./
-# Production deps only — shaves ~200 MB off the image
-RUN pnpm install --frozen-lockfile --prod && pnpm store prune
+# Copy node_modules from deps stage — avoids a second network round-trip
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
 
 EXPOSE 3000
 CMD ["node", "dist/main"]
