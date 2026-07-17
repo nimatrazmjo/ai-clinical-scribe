@@ -49,4 +49,26 @@ export class EncounterRepository implements EncounterRepositoryPort {
       { workingDraftJson: draftJson as SoapNoteJson },
     );
   }
+
+  async findByFilter(filter: {
+    providerId?: string;
+    from?: Date;
+    to?: Date;
+  }): Promise<Encounter[]> {
+    const qb = this.ds
+      .getRepository(EncounterOrmEntity)
+      .createQueryBuilder('e');
+    if (filter.providerId) {
+      qb.andWhere('e.providerId = :pid', { pid: filter.providerId });
+    }
+    if (filter.from) {
+      qb.andWhere('e.createdAt >= :from', { from: filter.from });
+    }
+    if (filter.to) {
+      qb.andWhere('e.createdAt < :to', { to: filter.to });
+    }
+    qb.orderBy('e.createdAt', 'DESC');
+    const rows = await qb.getMany();
+    return rows.map(EncounterMapper.toDomain);
+  }
 }

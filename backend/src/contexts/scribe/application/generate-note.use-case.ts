@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { DomainException } from '../../../shared-kernel';
 import { SoapNote } from '../../encounter/domain/value-objects/soap-note';
 import { Assessment } from '../../encounter/domain/value-objects/assessment';
@@ -8,6 +8,7 @@ import { EmptyContentGuardrail } from '../domain/guardrails/empty-content.guardr
 import { LLM_PROVIDER } from '../domain/ports/llm-provider.port';
 import type { LlmProvider, SectionKey } from '../domain/ports/llm-provider.port';
 import type { GenerationTool } from '../domain/ports/generation-tool.port';
+import { TemplateRepository } from '../../template/template.repository';
 
 export type GenerateNoteResult =
   | { ok: true; soapNote: SoapNote }
@@ -16,6 +17,7 @@ export type GenerateNoteResult =
 export interface GenerateNoteInput {
   transcript: string;
   encounterId: string;
+  /** If provided, skips live DB read and uses this value directly (for unit tests). */
   templateBody?: string | null;
   tools?: GenerationTool[];
 }
@@ -26,6 +28,7 @@ export class GenerateNoteUseCase {
     private readonly guardrail: EmptyContentGuardrail,
     private readonly promptAssembler: PromptAssembler,
     @Inject(LLM_PROVIDER) private readonly llm: LlmProvider,
+    @Optional() private readonly templateRepo?: TemplateRepository,
   ) {}
 
   async execute(input: GenerateNoteInput): Promise<GenerateNoteResult> {
@@ -34,9 +37,17 @@ export class GenerateNoteUseCase {
       return { ok: false, reason: verdict.reason };
     }
 
+    // Live-read propagation (E-33): read active template fresh on every call.
+    // If templateBody is explicitly provided (including null), use it directly (test override).
+    let templateBody: string | null | undefined = input.templateBody;
+    if (templateBody === undefined && this.templateRepo) {
+      const tmpl = await this.templateRepo.findActive();
+      templateBody = tmpl?.promptBody ?? null;
+    }
+
     const ctx = this.promptAssembler.assemble({
       transcript: input.transcript,
-      templateBody: input.templateBody,
+      templateBody: templateBody ?? null,
     });
 
     const sections: Partial<Record<SectionKey, string>> = {};

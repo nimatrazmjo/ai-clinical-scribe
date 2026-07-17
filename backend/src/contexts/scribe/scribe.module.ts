@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { DatabaseModule } from '../../database/database.module';
 import { EncounterModule } from '../encounter/encounter.module';
 import { AuthModule } from '../auth/auth.module';
+import { TemplateModule } from '../template/template.module';
 import { PromptAssembler } from './domain/prompt-assembler';
 import { EmptyContentGuardrail } from './domain/guardrails/empty-content.guardrail';
 import { GenerateNoteUseCase } from './application/generate-note.use-case';
@@ -11,7 +12,7 @@ import { LLM_PROVIDER } from './domain/ports/llm-provider.port';
 import { GenerationController } from './interface/generation.controller';
 
 @Module({
-  imports: [DatabaseModule, EncounterModule, AuthModule],
+  imports: [DatabaseModule, EncounterModule, AuthModule, TemplateModule],
   providers: [
     PromptAssembler,
     EmptyContentGuardrail,

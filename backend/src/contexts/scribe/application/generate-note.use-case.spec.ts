@@ -3,15 +3,20 @@ import { PromptAssembler } from '../domain/prompt-assembler';
 import { EmptyContentGuardrail } from '../domain/guardrails/empty-content.guardrail';
 import { FakeLlmProvider } from '../test-doubles/fake-llm-provider';
 import { DomainException } from '../../../shared-kernel';
+import type { TemplateRepository } from '../../template/template.repository';
 
 const GOOD_TRANSCRIPT =
   'Patient c/o chest pain radiating to left arm. BP 160/100, HR 88. History of hypertension.';
 
-function buildUseCase(scenario: ConstructorParameters<typeof FakeLlmProvider>[0]) {
+function buildUseCase(
+  scenario: ConstructorParameters<typeof FakeLlmProvider>[0],
+  templateRepo?: Partial<TemplateRepository>,
+) {
   return new GenerateNoteUseCase(
     new EmptyContentGuardrail(),
     new PromptAssembler(),
     new FakeLlmProvider(scenario),
+    templateRepo as TemplateRepository,
   );
 }
 
@@ -98,5 +103,37 @@ describe('GenerateNoteUseCase', () => {
       encounterId: 'enc-1',
     });
     expect(result.ok).toBe(false);
+  });
+
+  it('reads active template from DB on every call for live propagation (E-33)', async () => {
+    const mockTemplateRepo = {
+      findActive: jest
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ promptBody: 'Use SOAP format strictly' }),
+    };
+
+    const assembler = new PromptAssembler();
+    const assembleSpy = jest.spyOn(assembler, 'assemble');
+    const uc = new GenerateNoteUseCase(
+      new EmptyContentGuardrail(),
+      assembler,
+      new FakeLlmProvider('clean-soap'),
+      mockTemplateRepo as unknown as TemplateRepository,
+    );
+
+    // First call: no active template → templateBody null
+    await uc.execute({ transcript: GOOD_TRANSCRIPT, encounterId: 'enc-1' });
+    expect(assembleSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ templateBody: null }),
+    );
+
+    assembleSpy.mockClear();
+
+    // Second call: template now active → templateBody populated
+    await uc.execute({ transcript: GOOD_TRANSCRIPT, encounterId: 'enc-1' });
+    expect(assembleSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ templateBody: 'Use SOAP format strictly' }),
+    );
   });
 });

@@ -5,6 +5,7 @@ import { PatientEntity } from '../contexts/patient/patient.entity';
 import { EncounterOrmEntity } from '../contexts/encounter/infrastructure/encounter.orm-entity';
 import { NoteVersionOrmEntity } from '../contexts/encounter/infrastructure/note-version.orm-entity';
 import { AuditEntryOrmEntity } from '../contexts/audit/audit-entry.orm-entity';
+import { TemplateOrmEntity } from '../contexts/template/template.orm-entity';
 import { SecretsModule } from '../secrets/secrets.module';
 import {
   SECRETS_PROVIDER,
@@ -18,10 +19,11 @@ import { CreateNoteVersions1000000000004 } from './migrations/1000000000004-Crea
 import { AddDraftRevision1000000000005 } from './migrations/1000000000005-AddDraftRevision';
 import { CreateAuditLog1000000000006 } from './migrations/1000000000006-CreateAuditLog';
 import { CreateIcd10Codes1000000000007 } from './migrations/1000000000007-CreateIcd10Codes';
+import { CreateTemplates1000000000008 } from './migrations/1000000000008-CreateTemplates';
 
 export const DATA_SOURCE = 'DATA_SOURCE';
 
-export const ALL_ENTITIES = [UserEntity, PatientEntity, EncounterOrmEntity, NoteVersionOrmEntity, AuditEntryOrmEntity];
+export const ALL_ENTITIES = [UserEntity, PatientEntity, EncounterOrmEntity, NoteVersionOrmEntity, AuditEntryOrmEntity, TemplateOrmEntity];
 export const ALL_MIGRATIONS = [
   EnablePgcrypto1000000000000,
   CreateUsers1000000000001,
@@ -31,6 +33,7 @@ export const ALL_MIGRATIONS = [
   AddDraftRevision1000000000005,
   CreateAuditLog1000000000006,
   CreateIcd10Codes1000000000007,
+  CreateTemplates1000000000008,
 ];
 
 @Module({
