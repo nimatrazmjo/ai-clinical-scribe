@@ -5,6 +5,6 @@ export function useTemplatesQuery() {
   return useQuery({
     queryKey: ['templates'],
     queryFn: ({ signal }) => getTemplates(signal),
-    staleTime: 60_000,
+    staleTime: 0,
   });
 }
