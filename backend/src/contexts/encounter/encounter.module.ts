@@ -12,10 +12,11 @@ import { NOTE_VERSION_REPOSITORY } from './domain/ports/note-version.repository.
 import { StartEncounterUseCase } from './application/start-encounter.use-case';
 import { UpdateDraftUseCase } from './application/update-draft.use-case';
 import { SaveNoteVersionUseCase } from './application/save-note-version.use-case';
+import { AuditModule } from '../audit/audit.module';
 import { EncounterController } from './interface/encounter.controller';
 
 @Module({
-  imports: [DatabaseModule, PatientModule, AuthModule],
+  imports: [DatabaseModule, PatientModule, AuthModule, AuditModule],
   providers: [
     { provide: ENCOUNTER_REPOSITORY, useClass: EncounterRepository },
     EncounterRepository,

@@ -12,13 +12,13 @@ import { Assessment } from '../domain/value-objects/assessment';
 import { Icd10Suggestion } from '../domain/value-objects/icd10-suggestion';
 import { SoapNote } from '../domain/value-objects/soap-note';
 import { NoteVersion } from '../domain/note-version.aggregate';
-import { NoteSaved } from '../domain/events/note-saved.event';
 import type { NoteVersionRepositoryPort } from '../domain/ports/note-version.repository.port';
 import { NOTE_VERSION_REPOSITORY } from '../domain/ports/note-version.repository.port';
 import type { EncounterRepositoryPort } from '../domain/ports/encounter.repository.port';
 import { ENCOUNTER_REPOSITORY } from '../domain/ports/encounter.repository.port';
 import { EncounterRepository } from '../infrastructure/encounter.repository';
 import type { SaveNoteDto } from './dto/save-note.dto';
+import { AuditRepository } from '../../audit/audit.repository';
 
 export interface SaveNoteResult {
   versionNo: number;
@@ -38,6 +38,7 @@ export class SaveNoteVersionUseCase {
     private readonly encounterRepository: EncounterRepository,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(ID_GENERATOR) private readonly idGen: IdGenerator,
+    private readonly audit: AuditRepository,
   ) {}
 
   async execute(
@@ -101,8 +102,14 @@ export class SaveNoteVersionUseCase {
     encounter.finalize();
     await this.encounterRepo.save(encounter);
 
-    const event = new NoteSaved(encounterId, versionNo, callerId);
-    encounter.record(event);
+    // Audit — no PHI, only IDs and version number
+    await this.audit.record({
+      actorId: callerId,
+      action: 'NOTE_SAVED',
+      entityType: 'encounter',
+      entityId: encounterId,
+      metadata: { versionNo },
+    });
 
     return {
       versionNo: saved.versionNo,

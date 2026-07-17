@@ -27,6 +27,7 @@ describe('LoginUseCase', () => {
   let users: jest.Mocked<UserRepository>;
   let hasher: jest.Mocked<PasswordHasher>;
   let tokenService: jest.Mocked<TokenService>;
+  let auditRecord: jest.Mock;
   let loggerWarn: jest.SpyInstance;
 
   beforeEach(() => {
@@ -43,11 +44,12 @@ describe('LoginUseCase', () => {
       sign: jest.fn().mockResolvedValue('token.abc'),
       verify: jest.fn(),
     } as unknown as jest.Mocked<TokenService>;
+    auditRecord = jest.fn().mockResolvedValue(undefined);
     loggerWarn = jest
       .spyOn(Logger.prototype, 'warn')
       .mockImplementation(() => {});
 
-    useCase = new LoginUseCase(users, hasher, tokenService);
+    useCase = new LoginUseCase(users, hasher, tokenService, { record: auditRecord } as never);
   });
 
   afterEach(() => {
@@ -118,5 +120,31 @@ describe('LoginUseCase', () => {
     const ex = new InvalidCredentialsException();
     expect(ex.statusCode).toBe(401);
     expect(ex.code).toBe('INVALID_CREDENTIALS');
+  });
+
+  it('records USER_AUTHENTICATED audit entry on successful login (no PHI)', async () => {
+    users.findByEmail.mockResolvedValue(makeUser());
+    hasher.verify.mockResolvedValue(true);
+
+    await useCase.execute({ email: 'dr.test@demo.clinic', password: 'pass' });
+
+    expect(auditRecord).toHaveBeenCalledTimes(1);
+    const call = auditRecord.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.action).toBe('USER_AUTHENTICATED');
+    expect(call.entityType).toBe('user');
+    expect(call.actorId).toBe('user-id-1');
+    // metadata must not contain email or password
+    expect(JSON.stringify(call.metadata)).not.toMatch(/email|password|hash/i);
+  });
+
+  it('does not record audit when credentials are invalid', async () => {
+    users.findByEmail.mockResolvedValue(makeUser());
+    hasher.verify.mockResolvedValue(false);
+
+    await expect(
+      useCase.execute({ email: 'dr.test@demo.clinic', password: 'wrong' }),
+    ).rejects.toBeInstanceOf(InvalidCredentialsException);
+
+    expect(auditRecord).not.toHaveBeenCalled();
   });
 });

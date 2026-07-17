@@ -6,6 +6,7 @@ import {
 import { UserRepository } from '../identity/user.repository';
 import { type TokenService, TOKEN_SERVICE } from './token-service.port';
 import { InvalidCredentialsException } from './exceptions/invalid-credentials.exception';
+import { AuditRepository } from '../audit/audit.repository';
 
 export interface LoginCommand {
   email: string;
@@ -20,6 +21,7 @@ export class LoginUseCase {
     private readonly users: UserRepository,
     @Inject(PASSWORD_HASHER) private readonly hasher: PasswordHasher,
     @Inject(TOKEN_SERVICE) private readonly tokenService: TokenService,
+    private readonly audit: AuditRepository,
   ) {}
 
   async execute(cmd: LoginCommand): Promise<{ accessToken: string }> {
@@ -43,6 +45,14 @@ export class LoginUseCase {
       sub: user.id,
       email: user.email,
       role: user.role,
+    });
+
+    await this.audit.record({
+      actorId: user.id,
+      action: 'USER_AUTHENTICATED',
+      entityType: 'user',
+      entityId: user.id,
+      metadata: {},
     });
 
     return { accessToken };

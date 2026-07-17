@@ -61,6 +61,7 @@ describe('SaveNoteVersionUseCase', () => {
   };
   let encounterRepo: { save: jest.Mock; findByProviderAndId?: jest.Mock };
   let encounterRepository: { findByProviderAndId: jest.Mock; save: jest.Mock };
+  let auditRepo: { record: jest.Mock };
   let useCase: SaveNoteVersionUseCase;
 
   beforeEach(() => {
@@ -80,6 +81,7 @@ describe('SaveNoteVersionUseCase', () => {
     encounterRepo = {
       save: jest.fn().mockImplementation((e: Encounter) => Promise.resolve(e)),
     };
+    auditRepo = { record: jest.fn().mockResolvedValue(undefined) };
 
     useCase = new SaveNoteVersionUseCase(
       noteVersionRepo as never,
@@ -87,6 +89,7 @@ describe('SaveNoteVersionUseCase', () => {
       encounterRepository as never,
       new FixedClock(NOW),
       new SeqIdGenerator(),
+      auditRepo as never,
     );
   });
 
@@ -136,5 +139,28 @@ describe('SaveNoteVersionUseCase', () => {
       code: 'INVALID_SOAP_NOTE',
       statusCode: 422,
     });
+  });
+
+  it('records a NOTE_SAVED audit entry on successful save (no PHI)', async () => {
+    await useCase.execute(ENCOUNTER_ID, validDto, PROVIDER_ID);
+    expect(auditRepo.record).toHaveBeenCalledTimes(1);
+    const call = auditRepo.record.mock.calls[0][0] as Record<string, unknown>;
+    expect(call.action).toBe('NOTE_SAVED');
+    expect(call.entityType).toBe('encounter');
+    expect(call.entityId).toBe(ENCOUNTER_ID);
+    expect(call.actorId).toBe(PROVIDER_ID);
+    // metadata must not contain any clinical text
+    const meta = call.metadata as Record<string, unknown>;
+    expect(typeof meta.versionNo).toBe('number');
+    expect(JSON.stringify(meta)).not.toMatch(/patient|headache|bp|lisinopril/i);
+  });
+
+  it('does not record audit on idempotent replay (draftRevision already exists)', async () => {
+    const existing = makeNoteVersion(1, 'rev-abc');
+    noteVersionRepo.findByDraftRevision.mockResolvedValue(existing);
+
+    await useCase.execute(ENCOUNTER_ID, { ...validDto, draftRevision: 'rev-abc' }, PROVIDER_ID);
+
+    expect(auditRepo.record).not.toHaveBeenCalled();
   });
 });
