@@ -2,6 +2,8 @@ import { type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Moon, Sun, Stethoscope } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/features/auth/AuthContext';
+import { UserRole } from '@contracts';
 import { cn } from '@/lib/cn';
 
 interface LayoutProps {
@@ -10,13 +12,15 @@ interface LayoutProps {
   onLogout?: () => void;
 }
 
-const navLinks = [
-  { to: '/encounters', label: 'Encounters' },
-];
-
 export function Layout({ children, userName, onLogout }: LayoutProps) {
   const { theme, toggle } = useTheme();
   const { pathname } = useLocation();
+  const { user } = useAuth();
+
+  const navLinks = [
+    { to: '/encounters', label: 'Encounters' },
+    ...(user?.role === UserRole.Admin ? [{ to: '/admin', label: 'Admin' }] : []),
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -49,7 +53,7 @@ export function Layout({ children, userName, onLogout }: LayoutProps) {
             onClick={toggle}
             className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            {theme === 'dark' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
           </button>
           {userName && (
             <span className="text-xs text-muted-foreground border-l border-border pl-2 ml-1">
@@ -60,7 +64,7 @@ export function Layout({ children, userName, onLogout }: LayoutProps) {
             <button
               type="button"
               onClick={onLogout}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             >
               Sign out
             </button>

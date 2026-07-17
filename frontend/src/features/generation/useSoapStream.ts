@@ -60,7 +60,11 @@ export function useSoapStream(initialNote?: SoapNote | null) {
       if (!res.ok) {
         if (idleTimer) clearTimeout(idleTimer);
         setStatus('error');
-        setErrorMessage(`Generation failed: HTTP ${res.status}`);
+        setErrorMessage(
+          res.status === 429
+            ? 'Rate limit reached — wait a moment before generating again'
+            : `Generation failed: HTTP ${res.status}`,
+        );
         return;
       }
 

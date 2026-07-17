@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, ChevronLeft, Loader2, Square, Wand2, Save } from 'lucide-react';
-import type { EncounterDto, TemplateDto, NoteVersionDto } from '@contracts';
+import type { EncounterDto, SoapNote, TemplateDto, NoteVersionDto } from '@contracts';
+import { ApiError } from '@/api/apiClient';
 import { useEncounterQuery } from './useEncounterQuery';
 import { useDraftAutosave } from './useDraftAutosave';
 import { useNoteVersionsQuery } from './useNoteVersionsQuery';
@@ -77,9 +78,24 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Restore note if a prior save attempt failed due to session expiry
+  const RESCUE_KEY = `scribe_note_rescue_${encounterId}`;
+  const rescuedNote: SoapNote | null = (() => {
+    try {
+      const raw = sessionStorage.getItem(RESCUE_KEY);
+      if (!raw) return null;
+      sessionStorage.removeItem(RESCUE_KEY);
+      return JSON.parse(raw) as SoapNote;
+    } catch {
+      return null;
+    }
+  })();
+
   // Initialize hooks from server data — no post-mount effects needed
   const { status: draftStatus, scheduleAutosave, initSavedText } = useDraftAutosave(encounterId);
-  const { status, note, refusalReason, errorMessage, start, cancel, updateNote } = useSoapStream(encounter.draft);
+  const { status, note, refusalReason, errorMessage, start, cancel, updateNote } = useSoapStream(
+    rescuedNote ?? encounter.draft,
+  );
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     encounter.templateId ?? null,
   );
@@ -114,7 +130,14 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
       await queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'notes'] });
       await queryClient.invalidateQueries({ queryKey: ['encounters', encounterId] });
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Save failed');
+      if (err instanceof ApiError && (err.code === 'TOKEN_EXPIRED' || err.statusCode === 401)) {
+        try {
+          sessionStorage.setItem(RESCUE_KEY, JSON.stringify(note));
+        } catch { /* storage full or blocked */ }
+        setSaveError('Session expired — your edits were preserved. Re-login to continue.');
+      } else {
+        setSaveError(err instanceof Error ? err.message : 'Save failed');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -276,7 +299,7 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
       )}
 
       {/* Version history */}
-      {versions.length > 0 && <VersionHistoryPanel versions={versions} />}
+      {versions.length > 0 && <VersionHistoryPanel encounterId={encounterId} versions={versions} />}
     </div>
   );
 }

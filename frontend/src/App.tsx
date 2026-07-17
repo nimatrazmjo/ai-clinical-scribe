@@ -13,6 +13,7 @@ import { AdminLayout } from './features/admin/AdminLayout';
 import { AdminEncountersPage } from './features/admin/AdminEncountersPage';
 import { AdminTemplatesPage } from './features/admin/AdminTemplatesPage';
 import { AdminProvidersPage } from './features/admin/AdminProvidersPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { Toasts } from './components/Toasts';
 import { UserRole } from '@contracts';
@@ -85,17 +86,19 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <ToastProvider>
-          <BrowserRouter>
-            <AuthProvider>
-              <AppRoutes />
-              <Toasts />
-            </AuthProvider>
-          </BrowserRouter>
-        </ToastProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <ToastProvider>
+            <BrowserRouter>
+              <AuthProvider>
+                <AppRoutes />
+                <Toasts />
+              </AuthProvider>
+            </BrowserRouter>
+          </ToastProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
