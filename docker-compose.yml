@@ -4,7 +4,10 @@
 #
 # Quick start:
 #   cp backend/.env.example .env   # fill in POSTGRES_PASSWORD and JWT_SECRET
-#   docker compose up --build
+#   docker compose up --build      # postgres + api + frontend (nginx on :3001)
+#
+# Dev hot-reload (vite on :5173, nest --watch on :3000):
+#   docker compose --profile dev up --build api-dev frontend-dev
 #
 # Run unit tests (no containers required):
 #   docker compose run --rm api npm run test:unit
@@ -89,6 +92,43 @@ services:
       # Mount source so nest start --watch picks up edits without rebuild
       - ./backend/src:/app/src:ro
       - ./backend/test:/app/test:ro
+    networks:
+      - internal
+
+  # ── Frontend (production nginx build) ────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: production
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3001}:80"
+    networks:
+      - internal
+
+  # ── Frontend dev server (hot-reload, source mounted) ─────────────────────
+  # Usage: docker compose --profile dev up frontend-dev
+  frontend-dev:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: development
+    profiles: [dev]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      VITE_API_BASE_URL: "http://localhost:${API_PORT:-3000}"
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      # Mount source so vite HMR picks up edits without rebuild
+      - ./frontend/src:/app/frontend/src:ro
+      - ./packages/contracts/src:/app/packages/contracts/src:ro
     networks:
       - internal
 
