@@ -1,4 +1,5 @@
 import { Controller, Inject, NotFoundException, Param, Post, Req, Res } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -23,6 +24,7 @@ export class GenerationController {
 
   @Post(':id/generate')
   @Auth(UserRole.PROVIDER)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async generate(
     @Param('id') id: string,
     @CurrentUser() user: UserEntity,
