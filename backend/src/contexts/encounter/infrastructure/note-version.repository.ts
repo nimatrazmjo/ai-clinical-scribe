@@ -10,39 +10,40 @@ import { NoteVersionOrmEntity } from './note-version.orm-entity';
 export class NoteVersionRepository implements NoteVersionRepositoryPort {
   constructor(@Inject(DATA_SOURCE) private readonly ds: DataSource) {}
 
-  async nextVersionNo(encounterId: string): Promise<number> {
-    const result = await this.ds.query<Array<{ max: string | null }>>(
-      `SELECT MAX(version_no) AS max FROM note_versions WHERE encounter_id = $1`,
-      [encounterId],
-    );
-    const max = result[0]?.max;
-    return max == null ? 1 : Number(max) + 1;
-  }
+  async appendAtomic(version: NoteVersion): Promise<NoteVersion> {
+    return this.ds.transaction(async (manager) => {
+      // FOR UPDATE serializes concurrent saves for the same encounter,
+      // preventing two writers from computing the same version_no.
+      const result = await manager.query<Array<{ max: string | null }>>(
+        `SELECT MAX(version_no) AS max FROM note_versions WHERE encounter_id = $1 FOR UPDATE`,
+        [version.encounterId.value],
+      );
+      const max = result[0]?.max;
+      const versionNo = max == null ? 1 : Number(max) + 1;
 
-  async append(version: NoteVersion): Promise<NoteVersion> {
-    const repo = this.ds.getRepository(NoteVersionOrmEntity);
-    const contentJson = {
-      subjective: version.content.subjective,
-      objective: version.content.objective,
-      assessment: {
-        text: version.content.assessment.text,
-        icd10: version.content.assessment.icd10.map((c) => ({
-          code: c.code,
-          description: c.description,
-        })),
-      },
-      plan: version.content.plan,
-    };
-    const saved = await repo.save({
-      id: version.id.value,
-      encounterId: version.encounterId.value,
-      versionNo: version.versionNo,
-      contentJson,
-      savedBy: version.savedBy.value,
-      savedAt: version.savedAt,
-      draftRevision: version.draftRevision ?? null,
+      const contentJson = {
+        subjective: version.content.subjective,
+        objective: version.content.objective,
+        assessment: {
+          text: version.content.assessment.text,
+          icd10: version.content.assessment.icd10.map((c) => ({
+            code: c.code,
+            description: c.description,
+          })),
+        },
+        plan: version.content.plan,
+      };
+      const saved = await manager.getRepository(NoteVersionOrmEntity).save({
+        id: version.id.value,
+        encounterId: version.encounterId.value,
+        versionNo,
+        contentJson,
+        savedBy: version.savedBy.value,
+        savedAt: version.savedAt,
+        draftRevision: version.draftRevision ?? null,
+      });
+      return this.toDomain(saved);
     });
-    return this.toDomain(saved);
   }
 
   async findByDraftRevision(

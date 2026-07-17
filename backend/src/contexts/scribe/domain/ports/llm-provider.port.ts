@@ -16,7 +16,7 @@ export interface LlmContext {
 }
 
 export interface LlmProvider {
-  stream(ctx: LlmContext, tools?: GenerationTool[]): AsyncIterable<LlmEvent>;
+  stream(ctx: LlmContext, tools?: GenerationTool[], signal?: AbortSignal): AsyncIterable<LlmEvent>;
 }
 
 export const LLM_PROVIDER = 'LLM_PROVIDER';

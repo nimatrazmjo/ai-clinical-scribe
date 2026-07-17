@@ -1,8 +1,8 @@
 import type { NoteVersion } from '../note-version.aggregate';
 
 export interface NoteVersionRepositoryPort {
-  nextVersionNo(encounterId: string): Promise<number>;
-  append(version: NoteVersion): Promise<NoteVersion>;
+  /** Atomically selects the next version number and appends in one DB transaction. */
+  appendAtomic(version: NoteVersion): Promise<NoteVersion>;
   listByEncounter(encounterId: string): Promise<NoteVersion[]>;
   findByEncounterAndVersion(encounterId: string, versionNo: number): Promise<NoteVersion | null>;
   findByDraftRevision(encounterId: string, draftRevision: string): Promise<NoteVersion | null>;

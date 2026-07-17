@@ -87,18 +87,17 @@ export class SaveNoteVersionUseCase {
       throw new DomainException('Invalid SOAP note structure', 'INVALID_SOAP_NOTE', 422);
     }
 
-    const versionNo = await this.noteVersionRepo.nextVersionNo(encounterId);
     const version = NoteVersion.create(
       new NoteVersionId(this.idGen.uuid()),
       new EncounterId(encounterId),
-      versionNo,
+      0, // placeholder — appendAtomic assigns the real versionNo inside a transaction
       soapNote,
       new UserId(callerId),
       this.clock.now(),
       dto.draftRevision ?? null,
     );
 
-    const saved = await this.noteVersionRepo.append(version);
+    const saved = await this.noteVersionRepo.appendAtomic(version);
 
     if (encounter.status === EncounterStatus.DRAFT) {
       encounter.finalize();
@@ -111,7 +110,7 @@ export class SaveNoteVersionUseCase {
       action: 'NOTE_SAVED',
       entityType: 'encounter',
       entityId: encounterId,
-      metadata: { versionNo },
+      metadata: { versionNo: saved.versionNo },
     });
 
     return {

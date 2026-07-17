@@ -53,14 +53,8 @@ export const ALL_MIGRATIONS = [
           migrationsTableName: 'migrations',
           migrations: ALL_MIGRATIONS,
         });
-        // Connection failures are surfaced via the health endpoint (db:'down'),
-        // not by crashing the app at boot. Missing DATABASE_URL does fail fast (E-41).
-        try {
-          await ds.initialize();
-          await ds.runMigrations();
-        } catch {
-          // intentionally swallowed — health check will report db:'down'
-        }
+        await ds.initialize();
+        await ds.runMigrations();
         return ds;
       },
     },

@@ -41,8 +41,11 @@ export class GenerationController {
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders();
 
+    const abort = new AbortController();
+    res.on('close', () => abort.abort());
+
     const sendEvent = (data: Record<string, unknown>) => {
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      if (!res.writableEnded) res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
     try {
@@ -80,15 +83,18 @@ export class GenerationController {
       // FR-HIST-02: pass history tool so model can fetch prior encounters
       const tools: GenerationTool[] = [this.historyTool];
 
-      for await (const event of this.llm.stream(ctx, tools)) {
+      for await (const event of this.llm.stream(ctx, tools, abort.signal)) {
+        if (abort.signal.aborted) break;
         sendEvent(event);
         if (event.type === 'error' || event.type === 'done') break;
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Internal error';
-      sendEvent({ type: 'error', message });
+      if (!abort.signal.aborted) {
+        const message = err instanceof Error ? err.message : 'Internal error';
+        sendEvent({ type: 'error', message });
+      }
     } finally {
-      res.end();
+      if (!res.writableEnded) res.end();
     }
   }
 }

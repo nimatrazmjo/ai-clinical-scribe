@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Param,
   ParseIntPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -120,7 +121,7 @@ export class EncounterController {
 
   @Get(':id')
   @Auth(UserRole.PROVIDER)
-  async findOne(@Param('id') id: string, @CurrentUser() user: UserEntity) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: UserEntity) {
     const encounter = await this.repo.findByProviderAndId(
       user.id,
       new EncounterId(id),
@@ -150,7 +151,7 @@ export class EncounterController {
   @HttpCode(200)
   @Auth(UserRole.PROVIDER)
   async setTranscript(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SetTranscriptDto,
     @CurrentUser() user: UserEntity,
   ) {
@@ -164,7 +165,7 @@ export class EncounterController {
   @HttpCode(200)
   @Auth(UserRole.PROVIDER)
   async patchDraft(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateDraftDto,
     @CurrentUser() user: UserEntity,
   ) {
@@ -176,7 +177,7 @@ export class EncounterController {
   @HttpCode(201)
   @Auth(UserRole.PROVIDER)
   async saveNote(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SaveNoteDto,
     @CurrentUser() user: UserEntity,
   ) {
@@ -185,7 +186,7 @@ export class EncounterController {
 
   @Get(':id/versions')
   @Auth(UserRole.PROVIDER)
-  async listVersions(@Param('id') id: string, @CurrentUser() user: UserEntity) {
+  async listVersions(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: UserEntity) {
     const encounter = await this.repo.findByProviderAndId(
       user.id,
       new EncounterId(id),
@@ -198,7 +199,7 @@ export class EncounterController {
   @Get(':id/versions/diff')
   @Auth(UserRole.PROVIDER)
   async diffVersions(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Query('from', ParseIntPipe) fromNo: number,
     @Query('to', ParseIntPipe) toNo: number,
     @CurrentUser() user: UserEntity,
@@ -251,7 +252,7 @@ export class EncounterController {
   @Get(':id/versions/:n')
   @Auth(UserRole.PROVIDER)
   async getVersion(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Param('n', ParseIntPipe) n: number,
     @CurrentUser() user: UserEntity,
   ) {

@@ -26,7 +26,7 @@ export class AnthropicLlmProvider implements LlmProvider {
     this.model = model;
   }
 
-  async *stream(ctx: LlmContext, tools: GenerationTool[] = []): AsyncIterable<LlmEvent> {
+  async *stream(ctx: LlmContext, tools: GenerationTool[] = [], signal?: AbortSignal): AsyncIterable<LlmEvent> {
     const systemPrompt = ctx.systemPrompt + FORMAT_INSTRUCTION;
     const messages: MessageParam[] = [{ role: 'user', content: ctx.userMessage }];
     const anthropicTools: AnthropicTool[] = tools.map(toAnthropicTool);
@@ -86,7 +86,7 @@ export class AnthropicLlmProvider implements LlmProvider {
         messages,
         ...(anthropicTools.length > 0 ? { tools: anthropicTools } : {}),
         stream: true,
-      });
+      }, { signal });
 
       let fullText = '';
       const toolUseBlocks: Array<{ id: string; name: string; inputJson: string }> = [];
@@ -123,34 +123,47 @@ export class AnthropicLlmProvider implements LlmProvider {
         // Build assistant message with text + tool_use blocks
         const assistantContent: ContentBlockParam[] = [];
         if (fullText) assistantContent.push({ type: 'text', text: fullText });
-        for (const tb of toolUseBlocks) {
-          let parsed: Record<string, unknown> = {};
-          try { parsed = JSON.parse(tb.inputJson) as Record<string, unknown>; } catch { /* ignore */ }
-          assistantContent.push({ type: 'tool_use', id: tb.id, name: tb.name, input: parsed });
+
+        // Parse each tool block's JSON once and reuse
+        const parsedBlocks = toolUseBlocks.map((tb) => {
+          let args: Record<string, unknown> = {};
+          try { args = JSON.parse(tb.inputJson) as Record<string, unknown>; } catch { /* ignore */ }
+          return { ...tb, args };
+        });
+
+        for (const pb of parsedBlocks) {
+          assistantContent.push({ type: 'tool_use', id: pb.id, name: pb.name, input: pb.args });
         }
         messages.push({ role: 'assistant', content: assistantContent });
 
-        // Execute tools and collect results
+        // Execute tools and stream events
         const toolResults: Anthropic.ToolResultBlockParam[] = [];
-        for (const tb of toolUseBlocks) {
-          const tool = tools.find((t) => t.name === tb.name);
+        for (const pb of parsedBlocks) {
+          const tool = tools.find((t) => t.name === pb.name);
           let result: unknown = null;
-          let parsed: Record<string, unknown> = {};
-          try { parsed = JSON.parse(tb.inputJson) as Record<string, unknown>; } catch { /* ignore */ }
           if (tool) {
-            result = await tool.execute(parsed);
+            if (typeof pb.args['patientId'] !== 'string') {
+              result = { error: 'patientId must be a string' };
+            } else {
+              result = await tool.execute(pb.args);
+            }
           }
-          yield { type: 'tool-call', toolName: tb.name, args: parsed };
-          yield { type: 'tool-result', toolName: tb.name, result };
-          toolResults.push({ type: 'tool_result', tool_use_id: tb.id, content: JSON.stringify(result) });
+          yield { type: 'tool-call', toolName: pb.name, args: pb.args };
+          yield { type: 'tool-result', toolName: pb.name, result };
+          toolResults.push({ type: 'tool_result', tool_use_id: pb.id, content: JSON.stringify(result) });
         }
         messages.push({ role: 'user', content: toolResults });
-        // Reset section parser state for the continuation response
         sectionBuffer = '';
         currentSection = null;
       } else {
         continueLoop = false;
-        yield { type: 'done', rawContent: fullText };
+        // If the model returned text but produced no section tags, treat it as a refusal.
+        const hasSections = SECTION_KEYS.some((k) => fullText.includes(`<${k}>`));
+        if (!hasSections && fullText.trim()) {
+          yield { type: 'error', message: `Model did not produce a SOAP note. Response: ${fullText.slice(0, 200)}` };
+        } else {
+          yield { type: 'done', rawContent: fullText };
+        }
       }
     }
   }
