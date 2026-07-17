@@ -9,6 +9,10 @@ import { useAuthApi } from './features/auth/useAuthApi';
 import { EncounterListPage } from './features/encounter/EncounterListPage';
 import { StartEncounterPage } from './features/encounter/StartEncounterPage';
 import { EncounterPage } from './features/encounter/EncounterPage';
+import { AdminLayout } from './features/admin/AdminLayout';
+import { AdminEncountersPage } from './features/admin/AdminEncountersPage';
+import { AdminTemplatesPage } from './features/admin/AdminTemplatesPage';
+import { AdminProvidersPage } from './features/admin/AdminProvidersPage';
 import { Layout } from './components/Layout';
 import { Toasts } from './components/Toasts';
 import { UserRole } from '@contracts';
@@ -18,14 +22,6 @@ const queryClient = new QueryClient({
     queries: { retry: 1, staleTime: 30_000 },
   },
 });
-
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="flex min-h-64 items-center justify-center">
-      <p className="text-muted-foreground text-sm">{title}</p>
-    </div>
-  );
-}
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -66,14 +62,20 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/admin"
         element={
           <ProtectedRoute allowedRoles={[UserRole.Admin]}>
-            <AppShell><Placeholder title="Admin dashboard — coming in FE-15" /></AppShell>
+            <AppShell><AdminLayout /></AppShell>
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="/admin/encounters" replace />} />
+        <Route path="encounters" element={<AdminEncountersPage />} />
+        <Route path="templates" element={<AdminTemplatesPage />} />
+        <Route path="providers" element={<AdminProvidersPage />} />
+      </Route>
 
       <Route path="/" element={<Navigate to="/encounters" replace />} />
       <Route path="*" element={<Navigate to="/encounters" replace />} />

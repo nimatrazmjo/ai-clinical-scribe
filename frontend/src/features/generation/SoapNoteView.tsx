@@ -1,6 +1,7 @@
-import type { SoapNote } from '@contracts';
+import type { Icd10Suggestion, SoapNote } from '@contracts';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { Icd10SearchWidget } from '@/features/coding/Icd10SearchWidget';
 import type { StreamStatus } from './useSoapStream';
 
 interface Props {
@@ -67,6 +68,25 @@ export function SoapNoteView({ note, status, onChange, readOnly = false }: Props
             streaming && note.assessment.text === '' && 'animate-pulse',
           )}
         />
+
+        {editable && (
+          <div className="mt-2">
+            <Icd10SearchWidget
+              existingCodes={note.assessment.icd10.map(c => c.code)}
+              onAdd={(code: Icd10Suggestion) =>
+                onChange(prev => ({
+                  ...prev,
+                  assessment: {
+                    ...prev.assessment,
+                    icd10: prev.assessment.icd10.some(c => c.code === code.code)
+                      ? prev.assessment.icd10
+                      : [...prev.assessment.icd10, code],
+                  },
+                }))
+              }
+            />
+          </div>
+        )}
 
         {note.assessment.icd10.length > 0 && (
           <div className="mt-2">
