@@ -12,18 +12,27 @@ const DATE_TIME_FMT = new Intl.DateTimeFormat('en-US', {
   minute: '2-digit',
 });
 
-export function formatDate(iso: string): string {
-  return DATE_FMT.format(new Date(iso));
+function safeDate(iso: string | null | undefined): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
 }
 
-export function formatDateTime(iso: string): string {
-  return DATE_TIME_FMT.format(new Date(iso));
+export function formatDate(iso: string | null | undefined): string {
+  const d = safeDate(iso);
+  return d ? DATE_FMT.format(d) : '—';
+}
+
+export function formatDateTime(iso: string | null | undefined): string {
+  const d = safeDate(iso);
+  return d ? DATE_TIME_FMT.format(d) : '—';
 }
 
 export function formatPatientName(firstName: string, lastName: string): string {
   return `${lastName}, ${firstName}`;
 }
 
-export function formatDob(iso: string): string {
-  return DATE_FMT.format(new Date(iso));
+export function formatDob(iso: string | null | undefined): string {
+  const d = safeDate(iso);
+  return d ? DATE_FMT.format(d) : '—';
 }
