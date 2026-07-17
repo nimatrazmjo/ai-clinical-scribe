@@ -39,10 +39,15 @@ export class AdminController {
       to: to ? new Date(to) : undefined,
     });
     const patientIds = [...new Set(encounters.map((e) => e.patientRef.value))];
-    const patientMap = await this.encounterRepo.findPatientsByIds(patientIds);
+    const providerIds = [...new Set(encounters.map((e) => e.providerRef.value))];
+    const [patientMap, providerMap] = await Promise.all([
+      this.encounterRepo.findPatientsByIds(patientIds),
+      this.userRepo.findByIds(providerIds),
+    ]);
 
     return encounters.map((e) => {
       const p = patientMap.get(e.patientRef.value);
+      const prov = providerMap.get(e.providerRef.value);
       return {
         id: e.id.value,
         status: e.status,
@@ -54,6 +59,8 @@ export class AdminController {
         draftRevision: 0,
         templateId: e.selectedTemplateRef?.value ?? null,
         providerId: e.providerRef.value,
+        providerName: prov ? `${prov.firstName} ${prov.lastName}` : e.providerRef.value,
+        providerEmail: prov?.email ?? '',
         createdAt: e.createdAt,
         updatedAt: e.createdAt,
       };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAdminEncounters } from '@/api/admin';
+import { getAdminEncounters, type AdminEncounterDto } from '@/api/admin';
 import { formatDateTime, formatPatientName } from '@/lib/formatters';
 import { EncounterStatus } from '@contracts';
 import { cn } from '@/lib/cn';
@@ -16,7 +16,7 @@ export function AdminEncountersPage() {
     ...(toDate && { to: toDate }),
   };
 
-  const { data: encounters = [], isLoading, isError } = useQuery({
+  const { data: encounters = [], isLoading, isError } = useQuery<AdminEncounterDto[]>({
     queryKey: ['admin', 'encounters', params],
     queryFn: ({ signal }) => getAdminEncounters(params, signal),
   });
@@ -73,7 +73,7 @@ export function AdminEncountersPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border text-left">
-              {['Patient', 'Provider', 'Status', 'Created'].map(h => (
+              {['Patient', 'Provider', 'Status', 'Created'].map((h) => (
                 <th key={h} className="pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -82,7 +82,10 @@ export function AdminEncountersPage() {
             {encounters.map(enc => (
               <tr key={enc.id} className="border-b border-border/50 hover:bg-muted/20">
                 <td className="py-2 font-medium">{formatPatientName(enc.patientFirstName, enc.patientLastName)}</td>
-                <td className="py-2 text-xs text-muted-foreground font-mono">{enc.providerId}</td>
+                <td className="py-2 text-xs text-muted-foreground">
+                  <span className="font-medium">{enc.providerName}</span>
+                  <span className="block text-muted-foreground/70">{enc.providerEmail}</span>
+                </td>
                 <td className="py-2">
                   <span className={cn(
                     'inline-flex items-center rounded px-2 py-0.5 text-xs font-medium',
