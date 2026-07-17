@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { login } from '@/api/auth';
 import { ApiError } from '@/api/apiClient';
 import { useAuth } from './AuthContext';
@@ -15,13 +15,15 @@ export function useAuthApi() {
   const { setToken, clearAuth } = useAuth();
   const { error: toastError } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   async function doLogin(email: string, password: string): Promise<boolean> {
     setState({ isLoading: true, error: null });
     try {
       const { accessToken } = await login({ email, password });
       await setToken(accessToken);
-      navigate('/encounters');
+      const from = (location.state as { from?: string } | null)?.from ?? '/encounters';
+      navigate(from, { replace: true });
       return true;
     } catch (err) {
       const message =

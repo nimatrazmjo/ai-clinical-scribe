@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, ChevronLeft, Loader2, Square, Wand2, Save } from 'lucide-react';
@@ -78,18 +78,19 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  // Restore note if a prior save attempt failed due to session expiry
   const RESCUE_KEY = `scribe_note_rescue_${encounterId}`;
-  const rescuedNote: SoapNote | null = (() => {
+  // useRef so the read+remove runs exactly once even in Strict Mode's double-invoke
+  const rescuedNoteRef = useRef<SoapNote | null | undefined>(undefined);
+  if (rescuedNoteRef.current === undefined) {
     try {
       const raw = sessionStorage.getItem(RESCUE_KEY);
-      if (!raw) return null;
       sessionStorage.removeItem(RESCUE_KEY);
-      return JSON.parse(raw) as SoapNote;
+      rescuedNoteRef.current = raw ? (JSON.parse(raw) as SoapNote) : null;
     } catch {
-      return null;
+      rescuedNoteRef.current = null;
     }
-  })();
+  }
+  const rescuedNote = rescuedNoteRef.current;
 
   // Initialize hooks from server data — no post-mount effects needed
   const { status: draftStatus, scheduleAutosave, initSavedText } = useDraftAutosave(encounterId);

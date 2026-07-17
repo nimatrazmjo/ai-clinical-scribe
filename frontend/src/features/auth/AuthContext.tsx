@@ -32,8 +32,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setToken = useCallback(async (token: string) => {
     sessionStorage.setItem(TOKEN_KEY, token);
-    const me = await getMe();
-    setUser(me);
+    try {
+      const me = await getMe();
+      setUser(me);
+    } catch (err) {
+      sessionStorage.removeItem(TOKEN_KEY);
+      throw err;
+    }
   }, []);
 
   // Wire global TOKEN_EXPIRED → clear session (catches expiry on any API call)

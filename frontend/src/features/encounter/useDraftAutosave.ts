@@ -42,10 +42,9 @@ export function useDraftAutosave(encounterId: string) {
     };
   }, []);
 
-  // Initialize savedTextRef when we first receive the server value
-  function initSavedText(text: string) {
+  const initSavedText = useCallback((text: string) => {
     if (savedTextRef.current === null) savedTextRef.current = text;
-  }
+  }, []);
 
   return { status, scheduleAutosave, initSavedText };
 }
