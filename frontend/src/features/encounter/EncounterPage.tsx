@@ -106,6 +106,8 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
   const transcript = localEdit ?? encounter.transcript ?? '';
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Stable idempotency key so a retried save (e.g. after re-login) doesn't double-write.
+  const idempotencyKeyRef = useRef<string>('');
 
   useEffect(() => {
     if (encounter.transcript != null) {
@@ -125,10 +127,16 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
 
   async function handleSave() {
     if (!canSave) return;
+    // Backend requires at least one ICD-10 code — surface it here, not as a raw 400.
+    if (note.assessment.icd10.length === 0) {
+      setSaveError('Add at least one ICD-10 code to the assessment before saving.');
+      return;
+    }
     setIsSaving(true);
     setSaveError(null);
+    if (!idempotencyKeyRef.current) idempotencyKeyRef.current = crypto.randomUUID();
     try {
-      await saveNote(encounterId, { soapNote: note, draftRevision: encounter.draftRevision });
+      await saveNote(encounterId, { soapNote: note, draftRevision: idempotencyKeyRef.current });
       await queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'notes'] });
       await queryClient.invalidateQueries({ queryKey: ['encounters', encounterId] });
     } catch (err) {

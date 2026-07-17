@@ -10,12 +10,49 @@ function emptyNote(): SoapNote {
   return { subjective: '', objective: '', assessment: { text: '', icd10: [] }, plan: '' };
 }
 
+/**
+ * The model streams the assessment section as a JSON string:
+ *   {"text":"...","icd10":[{"code":"J45.909","description":"..."}]}
+ * This extracts the narrative + codes. During streaming the JSON is partial,
+ * so we fall back to a best-effort regex for the `text` field until it parses.
+ */
+function parseAssessment(
+  raw: string,
+): { text: string; icd10: Icd10Suggestion[] } {
+  const trimmed = raw.trimStart();
+  // Model didn't emit JSON (didn't follow format) — show whatever it sent.
+  if (!trimmed.startsWith('{')) return { text: raw, icd10: [] };
+
+  try {
+    const parsed = JSON.parse(trimmed) as { text?: string; icd10?: unknown };
+    const icd10 = Array.isArray(parsed.icd10)
+      ? (parsed.icd10 as Array<{ code: string; description: string; score?: number }>).map(c => ({
+          code: c.code,
+          description: c.description,
+          score: c.score ?? 1,
+        }))
+      : [];
+    return { text: typeof parsed.text === 'string' ? parsed.text : '', icd10 };
+  } catch {
+    // Partial JSON mid-stream — pull the text field out so it streams live.
+    const m = trimmed.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)/);
+    if (m) {
+      try {
+        return { text: JSON.parse(`"${m[1]}"`) as string, icd10: [] };
+      } catch { /* fall through */ }
+    }
+    return { text: '', icd10: [] };
+  }
+}
+
 export function useSoapStream(initialNote?: SoapNote | null) {
   const [status, setStatus] = useState<StreamStatus>(() => (initialNote ? 'done' : 'idle'));
   const [note, setNote] = useState<SoapNote>(() => initialNote ?? emptyNote());
   const [refusalReason, setRefusalReason] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const ctrlRef = useRef<AbortController | null>(null);
+  // Accumulates raw assessment JSON across section-delta chunks while streaming.
+  const assessmentRawRef = useRef('');
 
   const cancel = useCallback(() => {
     ctrlRef.current?.abort();
@@ -34,6 +71,7 @@ export function useSoapStream(initialNote?: SoapNote | null) {
 
     setStatus('streaming');
     setNote(emptyNote());
+    assessmentRawRef.current = '';
     setRefusalReason(null);
     setErrorMessage(null);
 
@@ -94,13 +132,19 @@ export function useSoapStream(initialNote?: SoapNote | null) {
           switch (event.type) {
             case 'section-delta': {
               const { section, text } = event;
-              setNote(prev => {
-                if (section === 'assessment') {
-                  return { ...prev, assessment: { ...prev.assessment, text: prev.assessment.text + text } };
-                }
+              if (section === 'assessment') {
+                // Assessment streams as JSON; accumulate raw and re-parse each chunk
+                // so the narrative renders live. Codes resolve once the JSON closes.
+                assessmentRawRef.current += text;
+                const { text: aText, icd10 } = parseAssessment(assessmentRawRef.current);
+                setNote(prev => ({
+                  ...prev,
+                  assessment: { text: aText, icd10: icd10.length ? icd10 : prev.assessment.icd10 },
+                }));
+              } else {
                 const field = section as 'subjective' | 'objective' | 'plan';
-                return { ...prev, [field]: prev[field] + text };
-              });
+                setNote(prev => ({ ...prev, [field]: prev[field] + text }));
+              }
               break;
             }
 
@@ -127,10 +171,22 @@ export function useSoapStream(initialNote?: SoapNote | null) {
               ctrl.abort();
               break outer;
 
-            case 'done':
+            case 'done': {
               if (idleTimer) clearTimeout(idleTimer);
+              // Authoritative parse of the completed assessment JSON → final codes.
+              if (assessmentRawRef.current) {
+                const { text: aText, icd10 } = parseAssessment(assessmentRawRef.current);
+                setNote(prev => ({
+                  ...prev,
+                  assessment: {
+                    text: aText || prev.assessment.text,
+                    icd10: icd10.length ? icd10 : prev.assessment.icd10,
+                  },
+                }));
+              }
               setStatus('done');
               break outer;
+            }
           }
         }
       }

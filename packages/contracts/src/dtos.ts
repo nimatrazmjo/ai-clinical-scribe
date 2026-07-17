@@ -23,7 +23,8 @@ export interface SetTranscriptDto {
 
 export interface SaveNoteDto {
   soapNote: SoapNote;
-  draftRevision?: number;
+  /** Optional idempotency key — repeat saves with the same value dedupe server-side. */
+  draftRevision?: string;
 }
 
 export interface CreateTemplateDto {
