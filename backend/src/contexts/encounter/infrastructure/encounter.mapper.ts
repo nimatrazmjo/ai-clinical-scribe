@@ -18,9 +18,14 @@ export class EncounterMapper {
       ? Transcript.create(orm.currentTranscript)
       : null;
 
-    const workingDraft = orm.workingDraftJson
-      ? EncounterMapper.jsonToSoapNote(orm.workingDraftJson)
-      : null;
+    let workingDraft: SoapNote | null = null;
+    if (orm.workingDraftJson) {
+      try {
+        workingDraft = EncounterMapper.jsonToSoapNote(orm.workingDraftJson);
+      } catch {
+        // partial/invalid autosave JSON — treat as no draft
+      }
+    }
 
     const selectedTemplateRef = orm.selectedTemplateId
       ? new TemplateId(orm.selectedTemplateId)

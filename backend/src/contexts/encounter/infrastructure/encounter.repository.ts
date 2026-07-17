@@ -4,7 +4,7 @@ import { DATA_SOURCE } from '../../../database/database.module';
 import { EncounterId } from '../../../shared-kernel';
 import { Encounter } from '../domain/encounter.aggregate';
 import type { EncounterRepositoryPort } from '../domain/ports/encounter.repository.port';
-import { EncounterOrmEntity } from './encounter.orm-entity';
+import { EncounterOrmEntity, type SoapNoteJson } from './encounter.orm-entity';
 import { EncounterMapper } from './encounter.mapper';
 
 @Injectable()
@@ -31,5 +31,22 @@ export class EncounterRepository implements EncounterRepositoryPort {
       .getRepository(EncounterOrmEntity)
       .save(data);
     return EncounterMapper.toDomain(saved);
+  }
+
+  async findByProviderAndId(
+    providerId: string,
+    id: EncounterId,
+  ): Promise<Encounter | null> {
+    const orm = await this.ds
+      .getRepository(EncounterOrmEntity)
+      .findOneBy({ id: id.value, providerId });
+    return orm ? EncounterMapper.toDomain(orm) : null;
+  }
+
+  async saveRawDraft(encounterId: string, draftJson: unknown): Promise<void> {
+    await this.ds.getRepository(EncounterOrmEntity).update(
+      { id: encounterId },
+      { workingDraftJson: draftJson as SoapNoteJson },
+    );
   }
 }

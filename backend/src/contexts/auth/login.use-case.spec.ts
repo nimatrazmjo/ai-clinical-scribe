@@ -41,7 +41,8 @@ describe('LoginUseCase', () => {
     };
     tokenService = {
       sign: jest.fn().mockResolvedValue('token.abc'),
-    };
+      verify: jest.fn(),
+    } as unknown as jest.Mocked<TokenService>;
     loggerWarn = jest
       .spyOn(Logger.prototype, 'warn')
       .mockImplementation(() => {});

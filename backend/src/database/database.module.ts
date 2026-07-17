@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm';
 import { UserEntity } from '../contexts/identity/user.entity';
 import { PatientEntity } from '../contexts/patient/patient.entity';
 import { EncounterOrmEntity } from '../contexts/encounter/infrastructure/encounter.orm-entity';
+import { NoteVersionOrmEntity } from '../contexts/encounter/infrastructure/note-version.orm-entity';
 import { SecretsModule } from '../secrets/secrets.module';
 import {
   SECRETS_PROVIDER,
@@ -12,15 +13,17 @@ import { EnablePgcrypto1000000000000 } from './migrations/1000000000000-EnablePg
 import { CreateUsers1000000000001 } from './migrations/1000000000001-CreateUsers';
 import { CreatePatients1000000000002 } from './migrations/1000000000002-CreatePatients';
 import { CreateEncounters1000000000003 } from './migrations/1000000000003-CreateEncounters';
+import { CreateNoteVersions1000000000004 } from './migrations/1000000000004-CreateNoteVersions';
 
 export const DATA_SOURCE = 'DATA_SOURCE';
 
-export const ALL_ENTITIES = [UserEntity, PatientEntity, EncounterOrmEntity];
+export const ALL_ENTITIES = [UserEntity, PatientEntity, EncounterOrmEntity, NoteVersionOrmEntity];
 export const ALL_MIGRATIONS = [
   EnablePgcrypto1000000000000,
   CreateUsers1000000000001,
   CreatePatients1000000000002,
   CreateEncounters1000000000003,
+  CreateNoteVersions1000000000004,
 ];
 
 @Module({
