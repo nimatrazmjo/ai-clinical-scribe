@@ -26,7 +26,14 @@ export default defineConfig([
     },
   },
   {
-    files: ['src/test/**', '**/*.spec.{ts,tsx}', '**/*.int-spec.{ts,tsx}'],
+    files: [
+      'src/test/**',
+      '**/*.spec.{ts,tsx}',
+      '**/*.int-spec.{ts,tsx}',
+      'src/contexts/**',
+      'src/features/**/AuthContext.tsx',
+      'src/components/ui/**',
+    ],
     rules: {
       'react-refresh/only-export-components': 'off',
     },
