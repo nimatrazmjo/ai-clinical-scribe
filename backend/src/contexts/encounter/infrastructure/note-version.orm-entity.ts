@@ -29,4 +29,7 @@ export class NoteVersionOrmEntity {
 
   @CreateDateColumn({ name: 'saved_at' })
   savedAt: Date;
+
+  @Column({ name: 'draft_revision', type: 'text', nullable: true })
+  draftRevision: string | null;
 }

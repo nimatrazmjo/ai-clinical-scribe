@@ -10,6 +10,7 @@ interface NoteVersionProps {
   content: SoapNote;
   savedBy: UserId;
   savedAt: Date;
+  draftRevision?: string | null;
 }
 
 export class NoteVersion extends AggregateRoot<NoteVersionId> {
@@ -40,6 +41,10 @@ export class NoteVersion extends AggregateRoot<NoteVersionId> {
     return this._props.savedAt;
   }
 
+  get draftRevision(): string | null | undefined {
+    return this._props.draftRevision;
+  }
+
   static create(
     id: NoteVersionId,
     encounterId: EncounterId,
@@ -47,8 +52,9 @@ export class NoteVersion extends AggregateRoot<NoteVersionId> {
     content: SoapNote,
     savedBy: UserId,
     savedAt: Date,
+    draftRevision?: string | null,
   ): NoteVersion {
-    return new NoteVersion(id, { encounterId, versionNo, content, savedBy, savedAt });
+    return new NoteVersion(id, { encounterId, versionNo, content, savedBy, savedAt, draftRevision });
   }
 
   static fromPersistence(

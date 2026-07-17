@@ -40,8 +40,19 @@ export class NoteVersionRepository implements NoteVersionRepositoryPort {
       contentJson,
       savedBy: version.savedBy.value,
       savedAt: version.savedAt,
+      draftRevision: version.draftRevision ?? null,
     });
     return this.toDomain(saved);
+  }
+
+  async findByDraftRevision(
+    encounterId: string,
+    draftRevision: string,
+  ): Promise<NoteVersion | null> {
+    const orm = await this.ds
+      .getRepository(NoteVersionOrmEntity)
+      .findOneBy({ encounterId, draftRevision });
+    return orm ? this.toDomain(orm) : null;
   }
 
   async listByEncounter(encounterId: string): Promise<NoteVersion[]> {

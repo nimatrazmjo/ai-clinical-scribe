@@ -14,6 +14,7 @@ import { CreateUsers1000000000001 } from './migrations/1000000000001-CreateUsers
 import { CreatePatients1000000000002 } from './migrations/1000000000002-CreatePatients';
 import { CreateEncounters1000000000003 } from './migrations/1000000000003-CreateEncounters';
 import { CreateNoteVersions1000000000004 } from './migrations/1000000000004-CreateNoteVersions';
+import { AddDraftRevision1000000000005 } from './migrations/1000000000005-AddDraftRevision';
 
 export const DATA_SOURCE = 'DATA_SOURCE';
 
@@ -24,6 +25,7 @@ export const ALL_MIGRATIONS = [
   CreatePatients1000000000002,
   CreateEncounters1000000000003,
   CreateNoteVersions1000000000004,
+  AddDraftRevision1000000000005,
 ];
 
 @Module({

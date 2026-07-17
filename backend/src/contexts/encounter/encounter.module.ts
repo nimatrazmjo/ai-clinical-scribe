@@ -11,6 +11,7 @@ import { NoteVersionRepository } from './infrastructure/note-version.repository'
 import { NOTE_VERSION_REPOSITORY } from './domain/ports/note-version.repository.port';
 import { StartEncounterUseCase } from './application/start-encounter.use-case';
 import { UpdateDraftUseCase } from './application/update-draft.use-case';
+import { SaveNoteVersionUseCase } from './application/save-note-version.use-case';
 import { EncounterController } from './interface/encounter.controller';
 
 @Module({
@@ -24,6 +25,7 @@ import { EncounterController } from './interface/encounter.controller';
     { provide: ID_GENERATOR, useClass: UuidGenerator },
     StartEncounterUseCase,
     UpdateDraftUseCase,
+    SaveNoteVersionUseCase,
   ],
   controllers: [EncounterController],
   exports: [ENCOUNTER_REPOSITORY, EncounterRepository, NOTE_VERSION_REPOSITORY, NoteVersionRepository],
