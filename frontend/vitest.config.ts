@@ -14,6 +14,10 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    pool: 'threads',
+    maxWorkers: 4,
+    isolate: false,
+    teardownTimeout: 3000,
     include: ['src/**/*.{spec,int-spec}.{ts,tsx}'],
     exclude: ['src/**/*.e2e.ts', 'node_modules'],
     coverage: {

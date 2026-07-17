@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { AuthMe } from '@contracts';
 import { getMe } from '@/api/auth';
-import { ApiError } from '@/api/apiClient';
+import { ApiError, registerUnauthorizedHandler } from '@/api/apiClient';
 
 const TOKEN_KEY = 'access_token';
 
@@ -19,11 +19,10 @@ interface AuthContextValue {
   clearAuth: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthMe | null>(null);
-  // Start loading only if there's a stored token to validate
   const [isLoading, setIsLoading] = useState(() => !!sessionStorage.getItem(TOKEN_KEY));
 
   const clearAuth = useCallback(() => {
@@ -37,17 +36,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me);
   }, []);
 
+  // Wire global TOKEN_EXPIRED → clear session (catches expiry on any API call)
+  useEffect(() => {
+    registerUnauthorizedHandler(clearAuth);
+  }, [clearAuth]);
+
   useEffect(() => {
     const token = sessionStorage.getItem(TOKEN_KEY);
     if (!token) return;
-    getMe()
+    const ctrl = new AbortController();
+    getMe(ctrl.signal)
       .then(setUser)
       .catch((err: unknown) => {
+        if (ctrl.signal.aborted) return;
         if (err instanceof ApiError && (err.code === 'TOKEN_EXPIRED' || err.statusCode === 401)) {
           sessionStorage.removeItem(TOKEN_KEY);
         }
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => { if (!ctrl.signal.aborted) setIsLoading(false); });
+    return () => ctrl.abort();
   }, []);
 
   return (

@@ -14,14 +14,23 @@ export class ApiError extends Error {
   }
 }
 
+// Registered by AuthProvider to clear session on TOKEN_EXPIRED from any request.
+let _onUnauthorized: (() => void) | null = null;
+
+export function registerUnauthorizedHandler(cb: () => void) {
+  _onUnauthorized = cb;
+}
+
 async function parseError(res: Response): Promise<ApiError> {
   try {
     const body = (await res.json()) as Partial<ApiErrorEnvelope>;
-    return new ApiError(
+    const err = new ApiError(
       res.status,
       body.code ?? 'INTERNAL_ERROR',
       body.message ?? res.statusText,
     );
+    if (err.code === 'TOKEN_EXPIRED') _onUnauthorized?.();
+    return err;
   } catch {
     return new ApiError(res.status, 'INTERNAL_ERROR', res.statusText);
   }
@@ -36,10 +45,7 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -49,16 +55,15 @@ async function request<T>(
     },
   });
 
-  if (!res.ok) {
-    throw await parseError(res);
-  }
+  if (!res.ok) throw await parseError(res);
 
   const text = await res.text();
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
 export const apiClient = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, options?: { signal?: AbortSignal }) =>
+    request<T>(path, { signal: options?.signal }),
 
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {
@@ -80,8 +85,8 @@ export const apiClient = {
 
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 
-  streamPost: (path: string, body?: unknown, signal?: AbortSignal): Promise<Response> => {
-    return fetch(`${BASE_URL}${path}`, {
+  streamPost: (path: string, body?: unknown, signal?: AbortSignal): Promise<Response> =>
+    fetch(`${BASE_URL}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -90,6 +95,5 @@ export const apiClient = {
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
-    });
-  },
+    }),
 };

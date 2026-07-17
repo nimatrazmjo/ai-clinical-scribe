@@ -5,6 +5,6 @@ export function login(dto: LoginDto): Promise<AuthResponse> {
   return apiClient.post<AuthResponse>('/auth/login', dto);
 }
 
-export function getMe(): Promise<AuthMe> {
-  return apiClient.get<AuthMe>('/auth/me');
+export function getMe(signal?: AbortSignal): Promise<AuthMe> {
+  return apiClient.get<AuthMe>('/auth/me', { signal });
 }
