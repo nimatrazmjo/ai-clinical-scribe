@@ -5,6 +5,7 @@ import { EMBEDDING_SERVICE } from './embedding-service.port';
 import { FakeEmbeddingService } from './test-doubles/fake-embedding.service';
 import { Icd10SeedService } from './icd10-seed.service';
 import { Icd10SearchService } from './icd10-search.service';
+import { CodingController } from './coding.controller';
 
 @Module({
   imports: [DatabaseModule, AuthModule],
@@ -13,6 +14,7 @@ import { Icd10SearchService } from './icd10-search.service';
     Icd10SeedService,
     Icd10SearchService,
   ],
+  controllers: [CodingController],
   exports: [Icd10SearchService],
 })
 export class CodingModule {}
