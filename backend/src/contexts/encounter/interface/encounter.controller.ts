@@ -24,6 +24,19 @@ import { EncounterRepository } from '../infrastructure/encounter.repository';
 import { NoteVersionRepository } from '../infrastructure/note-version.repository';
 import { EncounterId } from '../../../shared-kernel';
 import { diffSoapNotes, SoapNoteSnapshot } from '../domain/diff-soap-notes';
+import type { SoapNote } from '../domain/value-objects/soap-note';
+
+function soapNoteToDto(note: SoapNote) {
+  return {
+    subjective: note.subjective,
+    objective: note.objective,
+    assessment: {
+      text: note.assessment.text,
+      icd10: note.assessment.icd10.map((c) => ({ code: c.code, description: c.description })),
+    },
+    plan: note.plan,
+  };
+}
 
 function versionToResponse(v: {
   id: { value: string };
@@ -83,15 +96,26 @@ export class EncounterController {
   @Auth(UserRole.PROVIDER)
   async findAll(@CurrentUser() user: UserEntity) {
     const encounters = await this.repo.findByProvider(user.id);
-    return encounters.map((e) => ({
-      id: e.id.value,
-      patientId: e.patientRef.value,
-      providerId: e.providerRef.value,
-      status: e.status,
-      transcript: e.transcript?.text ?? null,
-      workingDraft: e.workingDraft ?? null,
-      createdAt: e.createdAt,
-    }));
+    const patientIds = [...new Set(encounters.map((e) => e.patientRef.value))];
+    const patientMap = await this.repo.findPatientsByIds(patientIds);
+
+    return encounters.map((e) => {
+      const p = patientMap.get(e.patientRef.value);
+      return {
+        id: e.id.value,
+        status: e.status,
+        patientFirstName: p?.firstName ?? '',
+        patientLastName: p?.lastName ?? '',
+        patientDateOfBirth: p?.dateOfBirth ?? '',
+        transcript: e.transcript?.text ?? null,
+        draft: e.workingDraft ? soapNoteToDto(e.workingDraft) : null,
+        draftRevision: 0,
+        templateId: e.selectedTemplateRef?.value ?? null,
+        providerId: e.providerRef.value,
+        createdAt: e.createdAt,
+        updatedAt: e.createdAt,
+      };
+    });
   }
 
   @Get(':id')
@@ -102,14 +126,23 @@ export class EncounterController {
       new EncounterId(id),
     );
     if (!encounter) throw new NotFoundException('Encounter not found');
+
+    const patientMap = await this.repo.findPatientsByIds([encounter.patientRef.value]);
+    const p = patientMap.get(encounter.patientRef.value);
+
     return {
       id: encounter.id.value,
-      patientId: encounter.patientRef.value,
-      providerId: encounter.providerRef.value,
       status: encounter.status,
+      patientFirstName: p?.firstName ?? '',
+      patientLastName: p?.lastName ?? '',
+      patientDateOfBirth: p?.dateOfBirth ?? '',
       transcript: encounter.transcript?.text ?? null,
-      workingDraft: encounter.workingDraft ?? null,
+      draft: encounter.workingDraft ? soapNoteToDto(encounter.workingDraft) : null,
+      draftRevision: 0,
+      templateId: encounter.selectedTemplateRef?.value ?? null,
+      providerId: encounter.providerRef.value,
       createdAt: encounter.createdAt,
+      updatedAt: encounter.createdAt,
     };
   }
 

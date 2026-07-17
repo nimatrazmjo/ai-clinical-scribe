@@ -1,11 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { EncounterId } from '../../../shared-kernel';
 import { Encounter } from '../domain/encounter.aggregate';
 import type { EncounterRepositoryPort } from '../domain/ports/encounter.repository.port';
 import { EncounterOrmEntity, type SoapNoteJson } from './encounter.orm-entity';
 import { EncounterMapper } from './encounter.mapper';
+import { PatientEntity } from '../../patient/patient.entity';
 
 @Injectable()
 export class EncounterRepository implements EncounterRepositoryPort {
@@ -55,6 +56,12 @@ export class EncounterRepository implements EncounterRepositoryPort {
       { id: encounterId },
       { currentTranscript: text },
     );
+  }
+
+  async findPatientsByIds(ids: string[]): Promise<Map<string, PatientEntity>> {
+    if (ids.length === 0) return new Map();
+    const patients = await this.ds.getRepository(PatientEntity).findBy({ id: In(ids) });
+    return new Map(patients.map((p) => [p.id, p]));
   }
 
   async findByFilter(filter: {
