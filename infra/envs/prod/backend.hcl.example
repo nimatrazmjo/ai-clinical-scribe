@@ -1,0 +1,4 @@
+# Copy to backend.hcl and set your globally-unique state bucket.
+# Kept out of git because the bucket name embeds the AWS account id.
+#   terraform init -backend-config=backend.hcl
+bucket = "acs-tfstate-CHANGE_ME"

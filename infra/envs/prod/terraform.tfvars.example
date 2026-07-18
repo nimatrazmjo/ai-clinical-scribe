@@ -13,11 +13,13 @@ data_subnet_cidrs   = ["10.0.20.0/24", "10.0.21.0/24"]
 single_nat_gateway  = true # set false for one NAT per AZ (HA, higher cost)
 
 db_engine_version      = "16"
-db_instance_class      = "db.t4g.small"
+db_instance_class      = "db.t4g.micro"  # free-tier eligible (t2/t3/t4g.micro only)
+db_enable_performance_insights = false  # unsupported on micro/nano instance classes
 db_multi_az            = true  # Phase 7: HA failover (single-AZ to save cost in a demo)
 db_deletion_protection = false # true for a long-lived instance
 db_skip_final_snapshot = true  # false to snapshot on destroy
-enable_rds_proxy       = true  # Phase 7: pool/multiplex at the infra layer (point DATABASE_URL at the proxy endpoint)
+db_backup_retention_period = 0 # free-tier accounts reject any nonzero value (FreeTierRestrictionError); raise once out of free tier
+enable_rds_proxy       = true  # Phase 7: pool/multiplex at the infra layer (point DATABASE_URL at the proxy endpoint). NOT available on free-tier accounts (FreeTierRestrictionError) - set false until the account is upgraded
 
 # CI/CD
 github_repo                 = "your-org/ai-clinical-scribe" # owner/name — pins the deploy role trust

@@ -56,8 +56,9 @@ variable "db_engine_version" {
 }
 
 variable "db_instance_class" {
-  type    = string
-  default = "db.t4g.small"
+  type        = string
+  default     = "db.t4g.micro"
+  description = "Free-tier eligible only: db.t2.micro, db.t3.micro, or db.t4g.micro. Anything larger triggers FreeTierRestrictionError on a free-tier account."
 }
 
 variable "db_multi_az" {
@@ -73,6 +74,18 @@ variable "db_deletion_protection" {
 variable "db_skip_final_snapshot" {
   type    = bool
   default = true
+}
+
+variable "db_backup_retention_period" {
+  type        = number
+  default     = 0
+  description = "Automated backup retention in days. 0 disables automated backups - required on this free-tier account (FreeTierRestrictionError on any nonzero value). Raise once the account is out of free tier."
+}
+
+variable "db_enable_performance_insights" {
+  type        = bool
+  default     = false
+  description = "Performance Insights is not supported on micro/nano instance classes - keep false while db_instance_class is db.t4g.micro."
 }
 
 variable "enable_rds_proxy" {

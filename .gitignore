@@ -34,6 +34,8 @@ yarn.lock
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+backend.hcl
+!backend.hcl.example
 override.tf
 override.tf.json
 *_override.tf

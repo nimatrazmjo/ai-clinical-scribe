@@ -7,7 +7,7 @@
 # SG for the interface endpoint ENIs: HTTPS from the app tier only.
 resource "aws_security_group" "endpoints" {
   name        = "${var.name}-vpce-sg"
-  description = "VPC interface endpoints — HTTPS from the app tier"
+  description = "VPC interface endpoints - HTTPS from the app tier"
   vpc_id      = var.vpc_id
   tags        = merge(var.tags, { Name = "${var.name}-vpce-sg" })
 }

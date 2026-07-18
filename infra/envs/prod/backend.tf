@@ -6,10 +6,13 @@
 # *.tfstate and .terraform/.
 #
 # Bootstrap once, out of band, before `terraform init` (see IMPLEMENTATION_PHASES.md
-# Phase 0). The bucket name must be globally unique — set it below.
+# Phase 0). The bucket name embeds the AWS account id, so it is supplied via a
+# gitignored partial-config file — keep it out of the public repo:
+#   terraform init -backend-config=backend.hcl
+# (Copy backend.hcl.example → backend.hcl and set the bucket.)
 terraform {
   backend "s3" {
-    bucket         = "acs-tfstate-CHANGE_ME" # ← set to your globally-unique bucket
+    # bucket comes from backend.hcl (partial config — not in git)
     key            = "prod/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "acs-tflock"

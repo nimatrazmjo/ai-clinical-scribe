@@ -30,12 +30,14 @@ module "data" {
   db_security_group_id       = module.security.db_sg_id
   rdsproxy_security_group_id = module.security.rdsproxy_sg_id
 
-  engine_version      = var.db_engine_version
-  instance_class      = var.db_instance_class
-  multi_az            = var.db_multi_az
-  deletion_protection = var.db_deletion_protection
-  skip_final_snapshot = var.db_skip_final_snapshot
-  enable_rds_proxy    = var.enable_rds_proxy
+  engine_version              = var.db_engine_version
+  instance_class               = var.db_instance_class
+  multi_az                     = var.db_multi_az
+  deletion_protection          = var.db_deletion_protection
+  skip_final_snapshot          = var.db_skip_final_snapshot
+  backup_retention_period      = var.db_backup_retention_period
+  enable_performance_insights  = var.db_enable_performance_insights
+  enable_rds_proxy             = var.enable_rds_proxy
 }
 
 # ── CI/CD (applyable now; independent of the Phase 6 ECS service) ───────────

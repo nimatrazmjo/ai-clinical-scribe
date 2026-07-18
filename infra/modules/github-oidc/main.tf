@@ -9,6 +9,22 @@ data "aws_region" "current" {}
 
 locals {
   oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.existing_oidc_provider_arn
+
+  github_owner = split("/", var.github_repo)[0]
+  github_name  = split("/", var.github_repo)[1]
+
+  # GitHub Actions OIDC tokens identify the repo in the `sub` claim two ways:
+  #   - legacy:    repo:<owner>/<repo>
+  #   - immutable: repo:<owner>@<owner_id>/<repo>@<repo_id>
+  # Repos created on/after 2026-07-15 default to the immutable format (GitHub
+  # changelog, "Immutable subject claims for GitHub Actions OIDC tokens").
+  # Older repos keep the legacy format unless they opt in. Matching both
+  # patterns means this trust policy works either way and survives GitHub
+  # migrating the default again later.
+  github_repo_patterns = [
+    var.github_repo,
+    "${local.github_owner}@*/${local.github_name}@*",
+  ]
 }
 
 # One GitHub OIDC provider per AWS account. If your account already has it,
@@ -39,11 +55,19 @@ data "aws_iam_policy_document" "trust" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Only this repo, only the allowed refs (default: main).
+    # Only this repo (legacy or immutable subject form - see locals above),
+    # only the allowed refs (default: main) or environments (default:
+    # production). GitHub changes the sub claim format when a job targets
+    # `environment:` - it becomes repo:<repo-form>:environment:<name> instead
+    # of repo:<repo-form>:ref:<ref>, so both must be allowed or any job with
+    # `environment:` set (like the deploy job) gets rejected.
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [for r in var.allowed_refs : "repo:${var.github_repo}:ref:${r}"]
+      values = concat(
+        flatten([for p in local.github_repo_patterns : [for r in var.allowed_refs : "repo:${p}:ref:${r}"]]),
+        flatten([for p in local.github_repo_patterns : [for e in var.allowed_environments : "repo:${p}:environment:${e}"]])
+      )
     }
   }
 }

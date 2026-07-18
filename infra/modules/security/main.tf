@@ -9,28 +9,28 @@
 
 resource "aws_security_group" "alb" {
   name        = "${var.name}-alb-sg"
-  description = "Public ALB — HTTPS in, forward to the app tier"
+  description = "Public ALB - HTTPS in, forward to the app tier"
   vpc_id      = var.vpc_id
   tags        = merge(var.tags, { Name = "${var.name}-alb-sg" })
 }
 
 resource "aws_security_group" "app" {
   name        = "${var.name}-app-sg"
-  description = "App tier (ECS/EC2 + nginx) — reachable only via the ALB"
+  description = "App tier (ECS/EC2 + nginx) - reachable only via the ALB"
   vpc_id      = var.vpc_id
   tags        = merge(var.tags, { Name = "${var.name}-app-sg" })
 }
 
 resource "aws_security_group" "db" {
   name        = "${var.name}-db-sg"
-  description = "RDS Postgres — VPC-only, app/proxy ingress only, no egress"
+  description = "RDS Postgres - VPC-only, app/proxy ingress only, no egress"
   vpc_id      = var.vpc_id
   tags        = merge(var.tags, { Name = "${var.name}-db-sg" })
 }
 
 resource "aws_security_group" "rdsproxy" {
   name        = "${var.name}-rdsproxy-sg"
-  description = "RDS Proxy — sits between the app tier and RDS"
+  description = "RDS Proxy - sits between the app tier and RDS"
   vpc_id      = var.vpc_id
   tags        = merge(var.tags, { Name = "${var.name}-rdsproxy-sg" })
 }
@@ -49,7 +49,7 @@ resource "aws_vpc_security_group_ingress_rule" "alb_https" {
 resource "aws_vpc_security_group_ingress_rule" "alb_http_redirect" {
   for_each          = toset(var.alb_ingress_cidrs)
   security_group_id = aws_security_group.alb.id
-  description       = "HTTP — used only to 301-redirect to HTTPS"
+  description       = "HTTP - used only to 301-redirect to HTTPS"
   cidr_ipv4         = each.value
   ip_protocol       = "tcp"
   from_port         = 80

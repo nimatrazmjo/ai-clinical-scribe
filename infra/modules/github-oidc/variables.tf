@@ -14,6 +14,12 @@ variable "allowed_refs" {
   description = "Git refs allowed to assume the deploy role. Default: only main."
 }
 
+variable "allowed_environments" {
+  type        = list(string)
+  default     = ["production"]
+  description = "GitHub Actions environments allowed to assume the deploy role. Needed because jobs with `environment:` set send a different OIDC sub claim (environment:<name> instead of ref:<ref>) - the deploy job in deploy.yml uses environment: production."
+}
+
 variable "ecr_repository_arns" {
   type        = list(string)
   description = "ECR repo ARNs the pipeline may push to."
