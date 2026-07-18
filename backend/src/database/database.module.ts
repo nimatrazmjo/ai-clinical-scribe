@@ -54,7 +54,13 @@ export const ALL_MIGRATIONS = [
           migrations: ALL_MIGRATIONS,
         });
         await ds.initialize();
-        await ds.runMigrations();
+        // Production runs migrations via the one-off migration task
+        // (RUN_MIGRATIONS=false on the long-running service, so replicas don't
+        // race). Unset (local dev / docker compose) keeps the convenient
+        // migrate-on-boot behaviour.
+        if (process.env['RUN_MIGRATIONS'] !== 'false') {
+          await ds.runMigrations();
+        }
         return ds;
       },
     },
