@@ -41,7 +41,9 @@ export class AdminController {
       to: to ? new Date(to) : undefined,
     });
     const patientIds = [...new Set(encounters.map((e) => e.patientRef.value))];
-    const providerIds = [...new Set(encounters.map((e) => e.providerRef.value))];
+    const providerIds = [
+      ...new Set(encounters.map((e) => e.providerRef.value)),
+    ];
     const [patientMap, providerMap] = await Promise.all([
       this.encounterRepo.findPatientsByIds(patientIds),
       this.userRepo.findByIds(providerIds),
@@ -61,7 +63,9 @@ export class AdminController {
         draftRevision: 0,
         templateId: e.selectedTemplateRef?.value ?? null,
         providerId: e.providerRef.value,
-        providerName: prov ? `${prov.firstName} ${prov.lastName}` : e.providerRef.value,
+        providerName: prov
+          ? `${prov.firstName} ${prov.lastName}`
+          : e.providerRef.value,
         providerEmail: prov?.email ?? '',
         createdAt: e.createdAt,
         updatedAt: e.createdAt,
@@ -116,6 +120,12 @@ export class AdminController {
       throw new NotFoundException('Provider not found');
     }
     await this.userRepo.setActive(id, false);
+    return { ok: true };
+  }
+
+  @Get('test')
+  @Auth(UserRole.ADMIN)
+  async test() {
     return { ok: true };
   }
 }
