@@ -1,0 +1,29 @@
+name: OIDC Debug (temporary)
+
+# Prints the decoded OIDC token GitHub actually sends - no AWS call involved.
+# Delete this file once the sts:AssumeRoleWithWebIdentity issue is resolved.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  debug-default:
+    name: Debug (no environment)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: github/actions-oidc-debugger@main
+        with:
+          audience: sts.amazonaws.com
+
+  debug-production-env:
+    name: Debug (environment: production)
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: github/actions-oidc-debugger@main
+        with:
+          audience: sts.amazonaws.com
