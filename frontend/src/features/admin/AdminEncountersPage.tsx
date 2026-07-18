@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAdminEncounters, type AdminEncounterDto } from '@/api/admin';
+import {
+  getAdminEncounters,
+  getAdminProviders,
+  type AdminEncounterDto,
+  type ProviderDto,
+} from '@/api/admin';
 import { Button } from '@/components/ui/button';
 import { formatDateTime, formatPatientName } from '@/lib/formatters';
 import { EncounterStatus } from '@contracts';
@@ -10,6 +15,11 @@ export function AdminEncountersPage() {
   const [providerFilter, setProviderFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+
+  const { data: providers = [] } = useQuery<ProviderDto[]>({
+    queryKey: ['admin', 'providers'],
+    queryFn: ({ signal }) => getAdminProviders(signal),
+  });
 
   const params = {
     ...(providerFilter && { providerId: providerFilter }),
@@ -26,15 +36,20 @@ export function AdminEncountersPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <label htmlFor="filter-provider" className="text-xs text-muted-foreground">Provider ID</label>
-          <input
+          <label htmlFor="filter-provider" className="text-xs text-muted-foreground">Provider</label>
+          <select
             id="filter-provider"
-            type="text"
             value={providerFilter}
             onChange={e => setProviderFilter(e.target.value)}
-            placeholder="Filter by provider ID…"
             className="h-7 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          >
+            <option value="">All providers</option>
+            {providers.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.firstName} {p.lastName} ({p.email})
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="filter-from" className="text-xs text-muted-foreground">From</label>

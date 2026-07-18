@@ -12,6 +12,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { isUUID } from 'class-validator';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { UserEntity, UserRole } from '../identity/user.entity';
 import { UserRepository } from '../identity/user.repository';
@@ -35,10 +36,33 @@ export class AdminController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
+    // providerId column is a uuid; a non-uuid value makes Postgres throw
+    // "invalid input syntax for type uuid" (a 500). A malformed filter has no
+    // matches by definition, so return empty rather than erroring.
+    const providerFilter = providerId?.trim();
+    if (providerFilter && !isUUID(providerFilter)) {
+      return [];
+    }
+
+    // Ignore unparseable dates instead of passing an Invalid Date into the query.
+    const parseDate = (v?: string): Date | undefined => {
+      if (!v) return undefined;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    };
+    // The date inputs send YYYY-MM-DD (UTC midnight). The repo filters
+    // createdAt < :to, so a bare "to" date would exclude everything on that
+    // day; advance it by one day so the whole selected day is included.
+    const fromDate = parseDate(from);
+    const toDate = parseDate(to);
+    const toExclusive = toDate
+      ? new Date(toDate.getTime() + 24 * 60 * 60 * 1000)
+      : undefined;
+
     const encounters = await this.encounterRepo.findByFilter({
-      providerId,
-      from: from ? new Date(from) : undefined,
-      to: to ? new Date(to) : undefined,
+      providerId: providerFilter,
+      from: fromDate,
+      to: toExclusive,
     });
     const patientIds = [...new Set(encounters.map((e) => e.patientRef.value))];
     const providerIds = [
