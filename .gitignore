@@ -15,8 +15,10 @@ coverage/
 # TypeScript
 *.tsbuildinfo
 
-# Lock files (each workspace member manages its own)
-pnpm-lock.yaml
+# Lock files: pnpm-lock.yaml IS committed per subproject (backend/, frontend/)
+# for reproducible installs - required by `pnpm install --frozen-lockfile` in
+# both Dockerfiles and CI. Only ignore the other package managers' lockfiles,
+# since this repo standardizes on pnpm.
 package-lock.json
 yarn.lock
 
