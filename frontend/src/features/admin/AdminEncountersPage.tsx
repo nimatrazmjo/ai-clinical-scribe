@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   getAdminEncounters,
@@ -11,10 +11,25 @@ import { formatDateTime, formatPatientName } from '@/lib/formatters';
 import { EncounterStatus } from '@contracts';
 import { cn } from '@/lib/cn';
 
+// Debounce a fast-changing value so anything keyed on it (here, the encounters
+// query) only reacts once the value settles — e.g. after the user stops typing.
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export function AdminEncountersPage() {
   const [providerFilter, setProviderFilter] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+
+  // Only query 500ms after the admin stops typing the provider ID — no request
+  // (or possible 500 on a partial ID) per keystroke.
+  const debouncedProvider = useDebouncedValue(providerFilter.trim(), 500);
 
   const { data: providers = [] } = useQuery<ProviderDto[]>({
     queryKey: ['admin', 'providers'],
@@ -22,7 +37,7 @@ export function AdminEncountersPage() {
   });
 
   const params = {
-    ...(providerFilter && { providerId: providerFilter }),
+    ...(debouncedProvider && { providerId: debouncedProvider }),
     ...(fromDate && { from: fromDate }),
     ...(toDate && { to: toDate }),
   };
@@ -36,20 +51,23 @@ export function AdminEncountersPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <label htmlFor="filter-provider" className="text-xs text-muted-foreground">Provider</label>
-          <select
+          <label htmlFor="filter-provider" className="text-xs text-muted-foreground">Provider ID</label>
+          <input
             id="filter-provider"
+            type="text"
+            list="admin-providers"
             value={providerFilter}
             onChange={e => setProviderFilter(e.target.value)}
-            className="h-7 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">All providers</option>
+            placeholder="Type or pick a provider…"
+            className="h-7 w-64 rounded border border-input bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <datalist id="admin-providers">
             {providers.map(p => (
               <option key={p.id} value={p.id}>
                 {p.firstName} {p.lastName} ({p.email})
               </option>
             ))}
-          </select>
+          </datalist>
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="filter-from" className="text-xs text-muted-foreground">From</label>
