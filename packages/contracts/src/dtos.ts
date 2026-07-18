@@ -1,4 +1,4 @@
-import type { SoapNote } from './soap';
+import type { SoapNote, SavedSoapNote } from './soap';
 
 export interface LoginDto {
   email: string;
@@ -22,7 +22,7 @@ export interface SetTranscriptDto {
 }
 
 export interface SaveNoteDto {
-  soapNote: SoapNote;
+  soapNote: SavedSoapNote;
   /** Optional idempotency key — repeat saves with the same value dedupe server-side. */
   draftRevision?: string;
 }
