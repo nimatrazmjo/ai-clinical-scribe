@@ -20,7 +20,7 @@ jobs:
           audience: sts.amazonaws.com
 
   debug-production-env:
-    name: Debug (environment: production)
+    name: "Debug (environment: production)"
     runs-on: ubuntu-latest
     environment: production
     steps:
