@@ -1,0 +1,176 @@
+name: Deploy to ECS
+
+# Merge to main → build images → push to ECR (immutable SHA tags) → deploy to ECS.
+# Auth is via GitHub OIDC (no static AWS keys). Required repo variables are
+# listed in infra/IMPLEMENTATION_PHASES.md (CI/CD section).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "packages/**"
+      - "infra/deploy/ecs/task-definition.json"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch: {}
+
+# Never let two deploys touch the service at the same time.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # required for OIDC
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+  ECR_REPO_API: ${{ vars.NAME_PREFIX }}/api
+  ECR_REPO_WEB: ${{ vars.NAME_PREFIX }}/web
+
+jobs:
+  build:
+    name: Build & push images
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute immutable image tag (git SHA)
+        id: meta
+        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          target: production
+          platforms: linux/amd64 # must match the ECS instance architecture
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_API }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build & push Web image (nginx + SPA)
+        uses: docker/build-push-action@v6
+        with:
+          context: . # repo root — Dockerfile needs packages/contracts (root .dockerignore keeps node_modules out)
+          file: ./frontend/Dockerfile
+          target: production
+          platforms: linux/amd64
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_WEB }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy:
+    name: Deploy to ECS
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production # add required reviewers here to gate deploys with an approval
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Render task definition
+        env:
+          API_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_API }}:${{ needs.build.outputs.image_tag }}
+          WEB_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_WEB }}:${{ needs.build.outputs.image_tag }}
+          TASK_FAMILY: ${{ vars.TASK_FAMILY }}
+          EXECUTION_ROLE_ARN: ${{ vars.EXECUTION_ROLE_ARN }}
+          TASK_ROLE_ARN: ${{ vars.TASK_ROLE_ARN }}
+          DATABASE_URL_ARN: ${{ vars.DATABASE_URL_ARN }}
+          ANTHROPIC_API_KEY_ARN: ${{ vars.ANTHROPIC_API_KEY_ARN }}
+          JWT_SECRET_ARN: ${{ vars.JWT_SECRET_ARN }}
+        run: |
+          set -euo pipefail
+          envsubst < infra/deploy/ecs/task-definition.json > rendered-taskdef.json
+          echo "── rendered task definition ──"
+          cat rendered-taskdef.json
+
+      - name: Register new task definition
+        id: register
+        run: |
+          set -euo pipefail
+          arn=$(aws ecs register-task-definition \
+            --cli-input-json file://rendered-taskdef.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "taskdef_arn=$arn" >> "$GITHUB_OUTPUT"
+          echo "Registered $arn"
+
+      - name: Run DB migrations (one-off task)
+        if: ${{ vars.RUN_DB_MIGRATIONS != 'false' }}
+        env:
+          API_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_API }}:${{ needs.build.outputs.image_tag }}
+          TASK_FAMILY: ${{ vars.TASK_FAMILY }}
+          EXECUTION_ROLE_ARN: ${{ vars.EXECUTION_ROLE_ARN }}
+          TASK_ROLE_ARN: ${{ vars.TASK_ROLE_ARN }}
+          DATABASE_URL_ARN: ${{ vars.DATABASE_URL_ARN }}
+        run: |
+          set -euo pipefail
+          # Dedicated single-container migrate task → it exits cleanly (unlike the
+          # long-running service). Runs `node dist/migrate` with an advisory lock.
+          envsubst < infra/deploy/ecs/migration-task-definition.json > migrate-taskdef.json
+          marn=$(aws ecs register-task-definition --cli-input-json file://migrate-taskdef.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          task_arn=$(aws ecs run-task \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --task-definition "$marn" \
+            --launch-type EC2 \
+            --network-configuration "awsvpcConfiguration={subnets=[${{ vars.APP_SUBNET_IDS }}],securityGroups=[${{ vars.APP_SECURITY_GROUP_ID }}]}" \
+            --query 'tasks[0].taskArn' --output text)
+          echo "Migration task: $task_arn"
+          aws ecs wait tasks-stopped --cluster "${{ vars.ECS_CLUSTER }}" --tasks "$task_arn"
+          code=$(aws ecs describe-tasks --cluster "${{ vars.ECS_CLUSTER }}" --tasks "$task_arn" \
+            --query 'tasks[0].containers[?name==`migrate`].exitCode | [0]' --output text)
+          echo "Migration exit code: $code"
+          test "$code" = "0"
+
+      - name: Update service
+        run: |
+          set -euo pipefail
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.ECS_SERVICE }}" \
+            --task-definition "${{ steps.register.outputs.taskdef_arn }}" >/dev/null
+
+      - name: Wait for the deployment to stabilize
+        run: |
+          # Fails (non-zero) if ECS's deployment circuit breaker rolls the
+          # deployment back — surfacing a bad deploy as a red pipeline.
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --services "${{ vars.ECS_SERVICE }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Deployed \`${{ needs.build.outputs.image_tag }}\`"
+            echo ""
+            echo "- Service: \`${{ vars.ECS_SERVICE }}\` on \`${{ vars.ECS_CLUSTER }}\`"
+            echo "- Task def: \`${{ steps.register.outputs.taskdef_arn }}\`"
+            echo "- Roll back: run the **Rollback ECS deployment** workflow (blank tag = previous revision)."
+          } >> "$GITHUB_STEP_SUMMARY"

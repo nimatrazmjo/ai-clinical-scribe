@@ -1,0 +1,95 @@
+name: Rollback ECS deployment
+
+# Manual rollback. Two modes:
+#   • leave "image_tag" blank → redeploy the PREVIOUS task-definition revision
+#     (fastest "undo the last deploy").
+#   • set "image_tag" to a git SHA → redeploy that exact image (pin to any
+#     retained version within the ECR rollback horizon).
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Git SHA to roll back to. Blank = previous task-definition revision."
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-prod # shares the lock with deploy.yml so they can't overlap
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+  ECR_REPO_API: ${{ vars.NAME_PREFIX }}/api
+  ECR_REPO_WEB: ${{ vars.NAME_PREFIX }}/web
+
+jobs:
+  rollback:
+    name: Roll back
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ── Mode A: roll back to a specific image tag ──────────────────────────
+      - name: Roll back to image tag
+        if: ${{ inputs.image_tag != '' }}
+        env:
+          API_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_API }}:${{ inputs.image_tag }}
+          WEB_IMAGE: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_WEB }}:${{ inputs.image_tag }}
+          TASK_FAMILY: ${{ vars.TASK_FAMILY }}
+          EXECUTION_ROLE_ARN: ${{ vars.EXECUTION_ROLE_ARN }}
+          TASK_ROLE_ARN: ${{ vars.TASK_ROLE_ARN }}
+          DATABASE_URL_ARN: ${{ vars.DATABASE_URL_ARN }}
+          ANTHROPIC_API_KEY_ARN: ${{ vars.ANTHROPIC_API_KEY_ARN }}
+          JWT_SECRET_ARN: ${{ vars.JWT_SECRET_ARN }}
+        run: |
+          set -euo pipefail
+          # Fail early if either image for that SHA is missing from ECR.
+          aws ecr describe-images --repository-name "${{ env.ECR_REPO_API }}" --image-ids imageTag="${{ inputs.image_tag }}" >/dev/null
+          aws ecr describe-images --repository-name "${{ env.ECR_REPO_WEB }}" --image-ids imageTag="${{ inputs.image_tag }}" >/dev/null
+
+          envsubst < infra/deploy/ecs/task-definition.json > rendered-taskdef.json
+          arn=$(aws ecs register-task-definition --cli-input-json file://rendered-taskdef.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "${{ vars.ECS_CLUSTER }}" --service "${{ vars.ECS_SERVICE }}" \
+            --task-definition "$arn" >/dev/null
+          aws ecs wait services-stable --cluster "${{ vars.ECS_CLUSTER }}" --services "${{ vars.ECS_SERVICE }}"
+          echo "Rolled back to image tag ${{ inputs.image_tag }} ($arn)"
+
+      # ── Mode B: roll back to the previous task-definition revision ─────────
+      - name: Roll back to previous revision
+        if: ${{ inputs.image_tag == '' }}
+        run: |
+          set -euo pipefail
+          current=$(aws ecs describe-services --cluster "${{ vars.ECS_CLUSTER }}" --services "${{ vars.ECS_SERVICE }}" \
+            --query 'services[0].taskDefinition' --output text)
+          family=$(echo "$current" | sed -E 's#.*/##; s/:[0-9]+$//')
+          rev=$(echo "$current" | sed -E 's/.*://')
+          if [ "$rev" -le 1 ]; then
+            echo "Current revision is $rev — no previous revision to roll back to." >&2
+            exit 1
+          fi
+          prev=$((rev - 1))
+          echo "Rolling back $family:$rev -> $family:$prev"
+          aws ecs update-service --cluster "${{ vars.ECS_CLUSTER }}" --service "${{ vars.ECS_SERVICE }}" \
+            --task-definition "$family:$prev" >/dev/null
+          aws ecs wait services-stable --cluster "${{ vars.ECS_CLUSTER }}" --services "${{ vars.ECS_SERVICE }}"
+          echo "Rolled back to $family:$prev"
+
+      - name: Summary
+        run: |
+          target="${{ inputs.image_tag }}"
+          echo "### Rollback complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Target: ${target:-previous task-definition revision}" >> "$GITHUB_STEP_SUMMARY"
