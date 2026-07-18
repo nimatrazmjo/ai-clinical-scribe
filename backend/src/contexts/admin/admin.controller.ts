@@ -122,10 +122,4 @@ export class AdminController {
     await this.userRepo.setActive(id, false);
     return { ok: true };
   }
-
-  @Get('test')
-  @Auth(UserRole.ADMIN)
-  async test() {
-    return { ok: true };
-  }
 }
