@@ -1,0 +1,28 @@
+{
+  "family": "${TASK_FAMILY}-migrate",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["EC2"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "${EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${TASK_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "migrate",
+      "image": "${API_IMAGE}",
+      "essential": true,
+      "command": ["node", "dist/migrate"],
+      "environment": [{ "name": "NODE_ENV", "value": "production" }],
+      "secrets": [{ "name": "DATABASE_URL", "valueFrom": "${DATABASE_URL_ARN}" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/acs/prod/api",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "migrate",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}

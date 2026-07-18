@@ -1,0 +1,36 @@
+# Copy to terraform.tfvars and adjust. NON-SECRET values only — never put
+# credentials here (the root .gitignore keeps *.tfvars out of git; this
+# .example file is the committed template).
+
+region   = "us-east-1"
+name     = "acs-prod"
+az_count = 2
+
+vpc_cidr            = "10.0.0.0/16"
+public_subnet_cidrs = ["10.0.0.0/24", "10.0.1.0/24"]
+app_subnet_cidrs    = ["10.0.10.0/24", "10.0.11.0/24"]
+data_subnet_cidrs   = ["10.0.20.0/24", "10.0.21.0/24"]
+single_nat_gateway  = true # set false for one NAT per AZ (HA, higher cost)
+
+db_engine_version      = "16"
+db_instance_class      = "db.t4g.small"
+db_multi_az            = true  # Phase 7: HA failover (single-AZ to save cost in a demo)
+db_deletion_protection = false # true for a long-lived instance
+db_skip_final_snapshot = true  # false to snapshot on destroy
+enable_rds_proxy       = true  # Phase 7: pool/multiplex at the infra layer (point DATABASE_URL at the proxy endpoint)
+
+# CI/CD
+github_repo                 = "your-org/ai-clinical-scribe" # owner/name — pins the deploy role trust
+create_github_oidc_provider = true                          # false if the account already has the GitHub OIDC provider
+
+# DNS / TLS (Phase 5) — set both to switch on HTTPS. Leave blank for HTTP-only.
+domain_name        = "" # e.g. "scribe.example.com"
+hosted_zone_name   = "" # e.g. "example.com"
+create_hosted_zone = false # true only if the zone isn't already in Route 53
+
+# Phase 7 — hardening
+enable_waf           = true       # WAFv2 on the ALB (managed rules + rate limit)
+enable_alarms        = true       # CloudWatch alarms → SNS
+alarm_email          = ""         # e.g. "oncall@example.com" (confirm the subscription email)
+enable_vpc_endpoints = true       # ECR/Secrets/Logs/SSM + S3 endpoints (hourly cost per interface endpoint)
+waf_rate_limit       = 2000
