@@ -128,4 +128,10 @@ export class AdminController {
   async test() {
     return { ok: true };
   }
+
+  @Get('test1')
+  @Auth(UserRole.ADMIN)
+  async test1() {
+    return { ok: true };
+  }
 }
