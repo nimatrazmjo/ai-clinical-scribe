@@ -46,7 +46,15 @@ CMD ["pnpm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
 FROM nginx:1.27-alpine AS production
 
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+
+# nginx.conf is an envsubst template (see its header). Placing it under
+# templates/ makes the base image's entrypoint render ${API_UPSTREAM} at start.
+# API_UPSTREAM defaults to the ECS loopback; docker-compose overrides it to
+# api:3000. NGINX_ENVSUBST_FILTER limits substitution to API_UPSTREAM so nginx's
+# own $uri/$host/etc. survive.
+COPY frontend/nginx.conf /etc/nginx/templates/default.conf.template
+ENV API_UPSTREAM=127.0.0.1:3000
+ENV NGINX_ENVSUBST_FILTER=API_UPSTREAM
 
 EXPOSE 80
 

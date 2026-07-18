@@ -1,14 +1,26 @@
 import type { ApiErrorEnvelope } from '@contracts';
 
-const BASE_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:3000';
+// Where the API lives, resolved in priority order:
+//   1. An explicit, non-empty VITE_API_URL (escape hatch — e.g. point local
+//      work at a remote backend).
+//   2. A production build → same origin (''): nginx serves the SPA and proxies
+//      /api/* to the backend. This leans on Vite's built-in import.meta.env.PROD
+//      (always true under `vite build`), NOT on a VITE_API_URL value threaded
+//      through Docker ENV — so it can't regress if that var fails to propagate.
+//   3. Dev (vite dev server, no nginx) → the backend directly on :3000.
+const explicitApiUrl = import.meta.env['VITE_API_URL'] as string | undefined;
+const BASE_URL =
+  explicitApiUrl && explicitApiUrl.length > 0
+    ? explicitApiUrl
+    : import.meta.env.PROD
+      ? ''
+      : 'http://localhost:3000';
 
-// In production BASE_URL is '' (same origin) and nginx proxies /api/* to the
-// backend, stripping the prefix before forwarding - so requests must include
-// it here. In dev BASE_URL points straight at the backend (no nginx, no
-// prefix stripping), and the backend's own routes have no /api prefix, so
-// adding one here would 404. Every call site below is written as if talking
-// to the backend directly (e.g. '/auth/login'); this is the one place that
-// reconciles that with nginx's proxy contract.
+// Empty base = same-origin = requests flow through nginx, which proxies only
+// /api/* and strips that prefix before forwarding. Call sites use bare backend
+// paths ('/auth/login'), so the marker is added here. When BASE_URL points
+// straight at the backend (dev, or an explicit override), no prefix is added —
+// backend routes are root-mounted (no setGlobalPrefix).
 const API_PREFIX = BASE_URL === '' ? '/api' : '';
 
 export class ApiError extends Error {
