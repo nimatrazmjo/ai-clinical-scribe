@@ -75,7 +75,7 @@ jobs:
           target: production
           platforms: linux/amd64
           build-args: |
-            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+            VITE_API_URL=${{ vars.VITE_API_URL }}
           push: true
           tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPO_WEB }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha,scope=web

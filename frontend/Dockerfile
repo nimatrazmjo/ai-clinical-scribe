@@ -21,8 +21,8 @@ RUN --mount=type=cache,id=pnpm-store-frontend,target=/root/.local/share/pnpm/sto
 # ---- builder: compile TypeScript + vite bundle -----------------------------
 FROM deps AS builder
 
-ARG VITE_API_BASE_URL=""
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ARG VITE_API_URL=""
+ENV VITE_API_URL=${VITE_API_URL}
 
 # contracts source must exist before tsc resolves the @contracts alias
 COPY packages/contracts/src /app/packages/contracts/src
