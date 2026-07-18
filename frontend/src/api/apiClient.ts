@@ -2,6 +2,15 @@ import type { ApiErrorEnvelope } from '@contracts';
 
 const BASE_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:3000';
 
+// In production BASE_URL is '' (same origin) and nginx proxies /api/* to the
+// backend, stripping the prefix before forwarding - so requests must include
+// it here. In dev BASE_URL points straight at the backend (no nginx, no
+// prefix stripping), and the backend's own routes have no /api prefix, so
+// adding one here would 404. Every call site below is written as if talking
+// to the backend directly (e.g. '/auth/login'); this is the one place that
+// reconciles that with nginx's proxy contract.
+const API_PREFIX = BASE_URL === '' ? '/api' : '';
+
 export class ApiError extends Error {
   statusCode: number;
   code: string;
@@ -46,7 +55,7 @@ function authHeaders(): Record<string, string> {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${BASE_URL}${API_PREFIX}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -86,7 +95,7 @@ export const apiClient = {
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 
   streamPost: (path: string, body?: unknown, signal?: AbortSignal): Promise<Response> =>
-    fetch(`${BASE_URL}${path}`, {
+    fetch(`${BASE_URL}${API_PREFIX}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
