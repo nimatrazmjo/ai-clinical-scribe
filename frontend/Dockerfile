@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Build context: monorepo root (needed for packages/contracts/src via @contracts alias)
 #
 # Targets:
@@ -13,7 +14,9 @@ WORKDIR /app/frontend
 RUN corepack enable && corepack prepare pnpm@11.13.1 --activate
 
 COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store-frontend,target=/root/.local/share/pnpm/store \
+    echo "network-timeout=300000" > .npmrc && \
+    pnpm install --frozen-lockfile
 
 # ---- builder: compile TypeScript + vite bundle -----------------------------
 FROM deps AS builder

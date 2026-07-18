@@ -14,6 +14,7 @@ import {
 import { Auth } from '../../auth/decorators/auth.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { UserEntity, UserRole } from '../../identity/user.entity';
+import { UserRepository } from '../../identity/user.repository';
 import { StartEncounterDto } from '../application/dto/start-encounter.dto';
 import { UpdateDraftDto } from '../application/dto/update-draft.dto';
 import { SetTranscriptDto } from '../application/dto/set-transcript.dto';
@@ -39,24 +40,27 @@ function soapNoteToDto(note: SoapNote) {
   };
 }
 
-function versionToResponse(v: {
-  id: { value: string };
-  encounterId: { value: string };
-  versionNo: number;
-  content: {
-    subjective: string;
-    objective: string;
-    assessment: { text: string; icd10: Array<{ code: string; description: string }> };
-    plan: string;
-  };
-  savedBy: { value: string };
-  savedAt: Date;
-}) {
+function versionToResponse(
+  v: {
+    id: { value: string };
+    encounterId: { value: string };
+    versionNo: number;
+    content: {
+      subjective: string;
+      objective: string;
+      assessment: { text: string; icd10: Array<{ code: string; description: string }> };
+      plan: string;
+    };
+    savedBy: { value: string };
+    savedAt: Date;
+  },
+  savedByEmail: string,
+) {
   return {
     id: v.id.value,
     encounterId: v.encounterId.value,
-    versionNo: v.versionNo,
-    content: {
+    versionNumber: v.versionNo,
+    soapNote: {
       subjective: v.content.subjective,
       objective: v.content.objective,
       assessment: {
@@ -68,8 +72,9 @@ function versionToResponse(v: {
       },
       plan: v.content.plan,
     },
-    savedBy: v.savedBy.value,
-    savedAt: v.savedAt,
+    savedById: v.savedBy.value,
+    savedByEmail,
+    createdAt: v.savedAt,
   };
 }
 
@@ -81,6 +86,7 @@ export class EncounterController {
     private readonly saveNoteVersion: SaveNoteVersionUseCase,
     private readonly repo: EncounterRepository,
     private readonly noteVersionRepo: NoteVersionRepository,
+    private readonly userRepo: UserRepository,
   ) {}
 
   @Post()
@@ -193,7 +199,9 @@ export class EncounterController {
     );
     if (!encounter) throw new NotFoundException('Encounter not found');
     const versions = await this.noteVersionRepo.listByEncounter(id);
-    return versions.map(versionToResponse);
+    const userIds = [...new Set(versions.map((v) => v.savedBy.value))];
+    const userMap = await this.userRepo.findByIds(userIds);
+    return versions.map((v) => versionToResponse(v, userMap.get(v.savedBy.value)?.email ?? ''));
   }
 
   @Get(':id/versions/diff')
@@ -263,6 +271,7 @@ export class EncounterController {
     if (!encounter) throw new NotFoundException('Encounter not found');
     const version = await this.noteVersionRepo.findByEncounterAndVersion(id, n);
     if (!version) throw new NotFoundException('Version not found');
-    return versionToResponse(version);
+    const savedByUser = await this.userRepo.findById(version.savedBy.value);
+    return versionToResponse(version, savedByUser?.email ?? '');
   }
 }

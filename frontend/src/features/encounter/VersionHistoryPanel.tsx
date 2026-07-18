@@ -86,7 +86,10 @@ export function VersionHistoryPanel({ encounterId, versions }: Props) {
                       role="region"
                       aria-label={`Version ${v.versionNumber} read-only`}
                     >
-                      <SoapNoteView note={v.soapNote} status="done" onChange={() => {}} readOnly />
+                      {v.soapNote
+                        ? <SoapNoteView note={v.soapNote} status="done" onChange={() => {}} readOnly />
+                        : <p className="text-xs text-muted-foreground">Note content unavailable — reload the page.</p>
+                      }
                     </div>
                   )}
 

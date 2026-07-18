@@ -58,6 +58,8 @@ services:
       PORT: "3000"
       NODE_ENV: production
       CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:5173,http://localhost:3001}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      USE_FAKE_LLM: "${USE_FAKE_LLM:-false}"
     ports:
       - "${API_PORT:-3000}:3000"
     networks:
@@ -86,6 +88,9 @@ services:
       PORT: "3000"
       NODE_ENV: development
       CORS_ORIGIN: "${CORS_ORIGIN:-http://localhost:5173,http://localhost:3001}"
+      # LLM: set ANTHROPIC_API_KEY in root .env — or USE_FAKE_LLM=true for keyless dev
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      USE_FAKE_LLM: "${USE_FAKE_LLM:-false}"
     ports:
       - "${API_PORT:-3000}:3000"
     volumes:

@@ -136,7 +136,14 @@ function EncounterPageContent({ encounterId, encounter, versions, templates }: C
     setSaveError(null);
     if (!idempotencyKeyRef.current) idempotencyKeyRef.current = crypto.randomUUID();
     try {
-      await saveNote(encounterId, { soapNote: note, draftRevision: idempotencyKeyRef.current });
+      const payload = {
+        ...note,
+        assessment: {
+          ...note.assessment,
+          icd10: note.assessment.icd10.map(({ code, description }) => ({ code, description })),
+        },
+      };
+      await saveNote(encounterId, { soapNote: payload, draftRevision: idempotencyKeyRef.current });
       await queryClient.invalidateQueries({ queryKey: ['encounters', encounterId, 'notes'] });
       await queryClient.invalidateQueries({ queryKey: ['encounters', encounterId] });
     } catch (err) {

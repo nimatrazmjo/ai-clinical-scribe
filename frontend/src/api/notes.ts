@@ -6,5 +6,5 @@ export function saveNote(encounterId: string, body: SaveNoteDto): Promise<NoteVe
 }
 
 export function getNoteVersions(encounterId: string, signal?: AbortSignal): Promise<NoteVersionDto[]> {
-  return apiClient.get<NoteVersionDto[]>(`/encounters/${encounterId}/notes`, { signal });
+  return apiClient.get<NoteVersionDto[]>(`/encounters/${encounterId}/versions`, { signal });
 }

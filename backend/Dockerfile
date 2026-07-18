@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ---- deps: install all dependencies (including devDeps for TypeScript build) ----
 FROM node:22-alpine AS deps
 WORKDIR /app
@@ -9,7 +10,9 @@ RUN apk add --no-cache python3 make g++
 RUN corepack enable && corepack prepare pnpm@11.13.1 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store-backend,target=/root/.local/share/pnpm/store \
+    echo "network-timeout=300000" > .npmrc && \
+    pnpm install --frozen-lockfile
 
 # ---- builder: compile TypeScript → dist/ ----
 FROM deps AS builder

@@ -5,7 +5,7 @@
 #   make prod       build + run the production stack (nginx + compiled API)
 #   make seed       seed demo users into the running DB
 
-.PHONY: dev stop prod seed
+.PHONY: dev stop prod seed rebuild
 
 # Hot-reload dev:
 #   • postgres + NestJS (nest start --watch, source mounted) in Docker
@@ -28,3 +28,10 @@ seed:
 	cd backend && \
 	DATABASE_URL="postgres://scribe:$$(grep POSTGRES_PASSWORD ../.env | cut -d= -f2)@localhost:5432/clinical_scribe" \
 	pnpm run seed
+
+# Clean rebuild of the dev containers — use after a lockfile / native-dep change,
+# or when an image picked up a stale/poisoned node_modules layer. --no-cache
+# forces a fresh, platform-correct pnpm install inside the image.
+rebuild:
+	docker compose --profile dev build --no-cache api-dev frontend-dev
+	docker compose --profile dev up api-dev frontend-dev

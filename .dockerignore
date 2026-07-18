@@ -1,0 +1,42 @@
+# Root .dockerignore — applies to the repo-root build context.
+# The frontend image builds with context = repo root (see frontend/Dockerfile),
+# so without this file `COPY frontend/ ./` drags host node_modules (built for the
+# host OS/arch) into the linux image, clobbering the deps stage and breaking vite.
+# (backend/ has its own .dockerignore because its context is ./backend.)
+
+# Dependencies — must be reinstalled inside the image for the target platform
+**/node_modules
+
+# Build output / caches
+**/dist
+**/build
+**/out
+**/coverage
+**/.vite
+**/.turbo
+*.tsbuildinfo
+
+# Env & secrets — never bake into an image
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+# VCS & OS cruft
+.git
+.gitignore
+**/.DS_Store
+Thumbs.db
+**/*.log
+
+# Editors
+.vscode
+.idea
+**/*.swp
+
+# Infra / meta not needed in app images
+infra
+docs
+Makefile
+TEST.md
