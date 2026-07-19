@@ -191,11 +191,7 @@ export class AnthropicLlmProvider implements LlmProvider {
           const tool = tools.find((t) => t.name === pb.name);
           let result: unknown = null;
           if (tool) {
-            if (typeof pb.args['patientId'] !== 'string') {
-              result = { error: 'patientId must be a string' };
-            } else {
-              result = await tool.execute(pb.args);
-            }
+            result = await tool.execute(pb.args);
           }
           yield { type: 'tool-call', toolName: pb.name, args: pb.args };
           yield { type: 'tool-result', toolName: pb.name, result };

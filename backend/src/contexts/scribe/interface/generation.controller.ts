@@ -80,8 +80,11 @@ export class GenerationController {
         templateBody: activeTemplate?.promptBody ?? null,
       });
 
-      // FR-HIST-02: pass history tool so model can fetch prior encounters
-      const tools: GenerationTool[] = [this.historyTool];
+      // FR-HIST-02: pass history tool bound to this encounter's patient so the
+      // model can fetch prior encounters without ever seeing the patient UUID.
+      const tools: GenerationTool[] = [
+        this.historyTool.forPatient(encounter.patientRef.value),
+      ];
 
       for await (const event of this.llm.stream(ctx, tools, abort.signal)) {
         if (abort.signal.aborted) break;
