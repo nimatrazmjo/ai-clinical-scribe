@@ -12,10 +12,16 @@ export class NoteVersionRepository implements NoteVersionRepositoryPort {
 
   async appendAtomic(version: NoteVersion): Promise<NoteVersion> {
     return this.ds.transaction(async (manager) => {
-      // FOR UPDATE serializes concurrent saves for the same encounter,
-      // preventing two writers from computing the same version_no.
+      // Serialize concurrent saves for the same encounter by locking the parent
+      // encounter row (FOR UPDATE is not allowed alongside an aggregate, so it
+      // can't sit on the MAX query itself). Two writers then compute version_no
+      // one after the other; the uq_note_versions_encounter_version constraint
+      // is the final backstop.
+      await manager.query(`SELECT 1 FROM encounters WHERE id = $1 FOR UPDATE`, [
+        version.encounterId.value,
+      ]);
       const result = await manager.query<Array<{ max: string | null }>>(
-        `SELECT MAX(version_no) AS max FROM note_versions WHERE encounter_id = $1 FOR UPDATE`,
+        `SELECT MAX(version_no) AS max FROM note_versions WHERE encounter_id = $1`,
         [version.encounterId.value],
       );
       const max = result[0]?.max;
